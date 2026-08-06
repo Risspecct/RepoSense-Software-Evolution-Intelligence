@@ -22,6 +22,11 @@ class JavaAnalyzer(BaseAnalyzer):
             source_code,
         )
 
+        result.imports = self._extract_imports(
+            tree,
+            source_code,
+        )
+
         return result
 
     def _extract_package(
@@ -39,7 +44,7 @@ class JavaAnalyzer(BaseAnalyzer):
 
             return (
                 source_code[
-                    child.start_byte : child.end_byte
+                    child.start_byte:child.end_byte
                 ]
                 .decode("utf-8")
                 .replace("package", "")
@@ -48,3 +53,32 @@ class JavaAnalyzer(BaseAnalyzer):
             )
 
         return None
+
+    def _extract_imports(
+        self,
+        tree: Tree,
+        source_code: bytes,
+    ) -> list[str]:
+
+        imports: list[str] = []
+
+        root = tree.root_node
+
+        for child in root.children:
+
+            if child.type != "import_declaration":
+                continue
+
+            import_name = (
+                source_code[
+                    child.start_byte:child.end_byte
+                ]
+                .decode("utf-8")
+                .replace("import", "")
+                .replace(";", "")
+                .strip()
+            )
+
+            imports.append(import_name)
+
+        return imports
