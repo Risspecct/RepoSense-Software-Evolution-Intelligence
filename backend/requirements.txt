@@ -31,3 +31,5 @@ tree-sitter-language-pack==0.9.0
 # Utilities
 # =========================
 orjson==3.11.3
+
+pandas
