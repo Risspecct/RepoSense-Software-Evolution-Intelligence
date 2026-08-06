@@ -33,18 +33,20 @@ class Neo4jClient:
         return self._driver
 
     def connect(self) -> None:
-        """
-        Initializes the Neo4j driver and verifies connectivity.
-        """
-        self._driver = GraphDatabase.driver(
-            settings.NEO4J_URI,
-            auth=(
-                settings.NEO4J_USERNAME,
-                settings.NEO4J_PASSWORD,
-            ),
-        )
+        try:
+            self._driver = GraphDatabase.driver(
+                settings.NEO4J_URI,
+                auth=(
+                    settings.NEO4J_USERNAME,
+                    settings.NEO4J_PASSWORD,
+                ),
+            )
 
-        self.driver.verify_connectivity()
+            self.driver.verify_connectivity()
+
+        except Exception:
+            self.close()
+            raise
 
     def close(self) -> None:
         """

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.graph.neo4j_client import neo4j_client
+from app.api.routes.repositories import router as repository_router
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
     lifespan=lifespan,
 )
+
+
+app.include_router(repository_router)
 
 
 @app.get("/")
