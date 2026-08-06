@@ -11,10 +11,6 @@ class ClassType(str, Enum):
 
 
 class ClassInfo(BaseModel):
-    """
-    Represents a Java type declaration.
-    """
-
     name: str
 
     type: ClassType
@@ -24,3 +20,5 @@ class ClassInfo(BaseModel):
     extends: str | None = None
 
     implements: list[str] = Field(default_factory=list)
+
+    annotations: list[str] = Field(default_factory=list)
