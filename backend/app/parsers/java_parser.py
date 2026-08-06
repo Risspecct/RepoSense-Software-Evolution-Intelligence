@@ -1,8 +1,9 @@
-from app.parsers.base_parser import BaseParser
+from app.parsers.tree_sitter_parser import TreeSitterParser
 from app.models.source_file import SourceFile
 
 
-class JavaParser(BaseParser):
+class JavaParser(TreeSitterParser):
+    LANGUAGE = "java"
 
     def parse(self, source_file: SourceFile):
-        raise NotImplementedError
+        return super().parse(source_file)

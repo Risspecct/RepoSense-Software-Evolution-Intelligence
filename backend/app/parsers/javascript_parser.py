@@ -1,8 +1,5 @@
-from app.parsers.base_parser import BaseParser
-from app.models.source_file import SourceFile
+from app.parsers.tree_sitter_parser import TreeSitterParser
 
 
-class JavaScriptParser(BaseParser):
-
-    def parse(self, source_file: SourceFile):
-        raise NotImplementedError
+class JavaScriptParser(TreeSitterParser):
+    LANGUAGE = "javascript"
