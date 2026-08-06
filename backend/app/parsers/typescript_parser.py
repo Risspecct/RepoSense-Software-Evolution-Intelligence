@@ -1,8 +1,5 @@
-from app.parsers.base_parser import BaseParser
-from app.models.source_file import SourceFile
+from app.parsers.tree_sitter_parser import TreeSitterParser
 
 
-class TypeScriptParser(BaseParser):
-
-    def parse(self, source_file: SourceFile):
-        raise NotImplementedError
+class TypeScriptParser(TreeSitterParser):
+    LANGUAGE = "typescript"
