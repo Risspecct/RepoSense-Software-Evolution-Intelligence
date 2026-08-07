@@ -12,7 +12,7 @@ import { CustomNode } from './CustomNode';
 import { GraphHeaderBar } from './GraphHeaderBar';
 import { ThemeModal, themes, type ThemeConfig } from './ThemeModal';
 import { PathFinderModal } from './PathFinderModal';
-import { Sparkles, AlertTriangle, FileCode, History, GitCommit, User, Loader2, Boxes, Braces } from 'lucide-react';
+import { AlertTriangle, FileCode, History, GitCommit, User, Loader2, Boxes, Braces } from 'lucide-react';
 import { fetchClassFields, fetchClassHistory, fetchClassMethods } from '../services/backendApi';
 
 const nodeTypes = { customNode: CustomNode };
