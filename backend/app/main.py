@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 import logging
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware  # 👈 Import CORS
 
 from app.config import settings
 from app.graph.neo4j_client import neo4j_client
@@ -30,6 +31,15 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     lifespan=lifespan,
+)
+
+# 👈 Add CORS Middleware so Vite frontend (http://localhost:5173) can communicate safely
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows requests from frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

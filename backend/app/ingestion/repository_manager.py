@@ -1,7 +1,9 @@
 from pathlib import Path
 from urllib.parse import urlparse
+import shutil
 
-from git import GitCommandError, Repo
+from git import Repo
+from git.exc import GitCommandError, InvalidGitRepositoryError
 
 from app.config import settings
 from app.models.repository import RepositoryInfo
@@ -26,16 +28,38 @@ class RepositoryManager:
         """
         Clone a repository if it does not exist locally.
         Otherwise, pull the latest changes.
+        If the local repository is corrupted, delete it and clone again.
         """
+
         owner, repository_name = self._extract_repository_info(
             repository_url,
         )
+
         repository_path = self._get_repository_path(
             repository_name,
         )
 
         if repository_path.exists():
-            self._pull(repository_path)
+            try:
+                # Validate that this is actually a Git repository
+                Repo(repository_path)
+
+                # Pull latest changes
+                self._pull(repository_path)
+
+            except InvalidGitRepositoryError:
+                print(
+                    f"Invalid repository detected at "
+                    f"{repository_path}. Re-cloning..."
+                )
+
+                shutil.rmtree(repository_path)
+
+                self._clone(
+                    repository_url,
+                    repository_path,
+                )
+
         else:
             self._clone(
                 repository_url,
@@ -127,9 +151,7 @@ class RepositoryManager:
             )
 
         owner = path_parts[0]
-        repository_name = path_parts[1].removesuffix(
-            ".git"
-        )
+        repository_name = path_parts[1].removesuffix(".git")
 
         return owner, repository_name
 
@@ -145,10 +167,14 @@ class RepositoryManager:
         repository_path: Path,
     ) -> None:
         try:
+            print(f"Cloning repository: {repository_url}")
+
             Repo.clone_from(
                 repository_url,
                 repository_path,
             )
+
+            print("Repository cloned successfully.")
 
         except GitCommandError as error:
             raise RuntimeError(
@@ -161,7 +187,18 @@ class RepositoryManager:
     ) -> None:
         try:
             repo = Repo(repository_path)
-            repo.remotes.origin.pull()
+
+            origin = repo.remotes.origin
+
+            print(
+                f"Pulling latest changes for "
+                f"{repository_path.name}"
+            )
+
+            origin.pull()
+
+        except InvalidGitRepositoryError:
+            raise
 
         except GitCommandError as error:
             raise RuntimeError(

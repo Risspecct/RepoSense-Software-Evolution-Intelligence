@@ -1,87 +1,33 @@
-# ==========================================
-# Python
-# ==========================================
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# Virtual Environments
-.venv/
-venv/
-env/
-
-# Environment Variables
-.env
-.env.*
-
-# ==========================================
-# FastAPI
-# ==========================================
-*.log
-
-# ==========================================
-# IDEs
-# ==========================================
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# ==========================================
-# Operating System
-# ==========================================
-.DS_Store
-Thumbs.db
-
-# ==========================================
-# Node / React
-# ==========================================
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-
-# ==========================================
-# Repository Data
-# ==========================================
-data/repositories/
-data/cache/
-data/runtime-uploads/
-
-# Keep directory structure
-!data/repositories/.gitkeep
-!data/cache/.gitkeep
-!data/runtime-uploads/.gitkeep
-
-# ==========================================
-# Neo4j
-# ==========================================
-neo4j/
-volumes/
-*.dbms
-
-# ==========================================
 # Logs
-# ==========================================
-logs/
+logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# ==========================================
-# Build / Temporary
-# ==========================================
-build/
-dist/
-tmp/
-temp/
+node_modules
+dist
+dist-ssr
+*.local
 
-# ==========================================
-# Git
-# ==========================================
-*.orig
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+backend/.env
+
+# Cloned repositories
+backend/data/repositories/

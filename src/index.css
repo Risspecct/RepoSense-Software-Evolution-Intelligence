@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "@xyflow/react/dist/style.css";
+@import "tailwindcss";
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  /* Allow natural vertical scrolling for pages, overflow is managed inside KnowledgeGraph wrapper */
+  overflow-y: auto; 
+  background-color: #F6F5F1;
+}
+/* Edge Label Badges */
+.react-flow__edge-textbg {
+  fill: #FFFFFF !important;
+  stroke: #E4E1D8 !important;
+  stroke-width: 1px !important;
+  rx: 8px !important;
+  ry: 8px !important;
+}
+
+.react-flow__edge-text {
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  fill: #171A21 !important;
+}

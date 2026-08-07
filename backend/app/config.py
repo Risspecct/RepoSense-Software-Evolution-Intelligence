@@ -1,6 +1,10 @@
+import os
+from pathlib import Path
 from functools import lru_cache
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Locate the root folder of backend to safely find .env
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -11,8 +15,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    NEO4J_URI: str
-    NEO4J_USERNAME: str
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USERNAME: str = "neo4j"
     NEO4J_PASSWORD: str
 
     REPOSITORY_STORAGE: str = "data/repositories"
@@ -24,7 +28,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.path.join(BASE_DIR, ".env"),
         case_sensitive=True,
         extra="ignore",
     )
