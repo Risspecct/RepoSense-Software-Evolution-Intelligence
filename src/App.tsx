@@ -14,13 +14,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('graph');
   const [nodes, setNodes] = useState<any[]>([]);
   const [edges, setEdges] = useState<any[]>([]);
-  const [, setRepoName] = useState('Spring-Course-Management-System');
-
-  // Load initial graph on startup using your teammate's compatible Java repo
-  useEffect(() => {
-    const initialUrl = 'https://github.com/Risspecct/Spring-Course-Management-System';
-    handleIngestRepo(initialUrl);
-  }, []);
+  const [repoName, setRepoName] = useState('');
 
   const handleIngestRepo = async (url: string) => {
     console.log(`🚀 Attempting backend ingestion for: ${url}`);

@@ -24,7 +24,7 @@ export const Navbar = ({
   onIngestRepo 
 }: NavbarProps) => {
   // Inside src/components/layout/Navbar.tsx:
-  const [inputUrl, setInputUrl] = useState('https://github.com/facebook/react');
+  const [inputUrl, setInputUrl] = useState('');
   const [isIngesting, setIsIngesting] = useState(false);
   const [neo4jOnline, setNeo4jOnline] = useState(false);
 
