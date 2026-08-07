@@ -15,3 +15,7 @@ class MethodInfo(BaseModel):
     parameters: list[ParameterInfo] = Field(default_factory=list)
 
     is_constructor: bool = False
+
+    summary: str | None = None
+
+    embedding: list[float] | None = None
