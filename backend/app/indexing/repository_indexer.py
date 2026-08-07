@@ -37,6 +37,7 @@ class RepositoryIndexer:
         """
 
         graph = GraphDocument()
+        analyses = []
 
         files = self.scanner.scan(repository_path)
 
@@ -69,8 +70,16 @@ class RepositoryIndexer:
                 source_code,
             )
 
+            analyses.append(analysis)
+
+        symbol_index = self._build_symbol_index(
+            analyses,
+        )
+
+        for analysis in analyses:
             file_graph = self.builder.build(
                 analysis,
+                symbol_index=symbol_index,
             )
 
             graph.merge(file_graph)
@@ -82,3 +91,21 @@ class RepositoryIndexer:
 
         finally:
             self.client.close()
+
+    def _build_symbol_index(
+        self,
+        analyses: list,
+    ) -> dict[str, str]:
+        symbol_index: dict[str, str] = {}
+
+        for analysis in analyses:
+            if analysis.package is None:
+                continue
+
+            for cls in analysis.classes:
+                class_id = (
+                    f"{analysis.package}.{cls.name}"
+                )
+                symbol_index[class_id] = class_id
+
+        return symbol_index

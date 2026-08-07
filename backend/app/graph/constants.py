@@ -12,3 +12,6 @@ class RelationshipType(StrEnum):
     CONTAINS = "CONTAINS"
     DECLARES = "DECLARES"
     HAS_FIELD = "HAS_FIELD"
+    EXTENDS = "EXTENDS"
+    IMPLEMENTS = "IMPLEMENTS"
+    IMPORTS = "IMPORTS"
