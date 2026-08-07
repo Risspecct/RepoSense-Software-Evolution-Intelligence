@@ -263,10 +263,12 @@ Identify code hotspots, flaky tests, regression patterns, and long-term architec
 <div align="center">
 
 ### Team Pav Bhaji
+**RepoSense — Software Evolution Intelligence Platform**<br>
 
-**RepoSense — Software Evolution Intelligence Platform**
+**Team Members:**<br>
+Rishik Garg | Shresth Agarwal | Disha Kaushal | Trisha Soni
 
-Quantum Arena '26
+<br>
 
 </div>
 
