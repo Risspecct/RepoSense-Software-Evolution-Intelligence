@@ -244,6 +244,107 @@ Identify code hotspots, flaky tests, regression patterns, and long-term architec
 </table>
 
 ---
+## 🚀 How to Run RepoSense
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/<your-username>/RepoSense-Software-Evolution-Intelligence.git
+cd RepoSense-Software-Evolution-Intelligence
+```
+
+---
+
+### 2. Create a Virtual Environment
+
+**Windows**
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**Linux / macOS**
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+---
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+### 4. Configure Environment Variables
+
+Create a `.env` file inside the **backend/** directory.
+
+```env
+# Neo4j
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
+
+# Gemini
+GOOGLE_API_KEY=your_gemini_api_key
+```
+
+---
+
+### 5. Start Neo4j
+
+Start your local Neo4j database and ensure it is running on
+
+```
+bolt://localhost:7687
+```
+
+---
+
+### 6. Start the Backend
+
+```bash
+cd backend
+uvicorn app.main:app --reload
+```
+
+Backend will start at
+
+```
+http://localhost:8000
+```
+
+Swagger Documentation
+
+```
+http://localhost:8000/docs
+```
+
+---
+
+### 7. Start the Frontend
+
+Open a new terminal.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend will be available at
+
+```
+http://localhost:3000
+```
+
+
 
 # 🔮 Future Roadmap
 
