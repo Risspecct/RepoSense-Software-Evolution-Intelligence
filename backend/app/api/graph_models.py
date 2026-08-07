@@ -42,6 +42,7 @@ class CommitHistoryItem(BaseModel):
     email: str
     timestamp: str
     file_path: str
+    intent: str
 
 
 class ClassHistoryResponse(BaseModel):

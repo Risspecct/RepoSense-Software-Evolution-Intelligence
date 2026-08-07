@@ -10,7 +10,9 @@ from app.graph.neo4j_client import Neo4jClient
 from app.ingestion.file_scanner import FileScanner
 from app.models.source_file import ProgrammingLanguage, SourceFile
 from app.parsers.parser_factory import ParserFactory
-
+from app.graph.query.graph_query_service import GraphQueryService
+from app.intelligence.gemini_client import GeminiClient
+from app.intelligence.summary_service import SummaryService
 
 class RepositoryIndexer:
     """
@@ -29,6 +31,14 @@ class RepositoryIndexer:
 
         self.builder = GraphBuilder()
         self.writer = GraphWriter(client)
+        
+        self.graph_query_service = GraphQueryService(client)
+        self.gemini_client = GeminiClient()
+
+        self.summary_service = SummaryService(
+            graph_query_service=self.graph_query_service,
+            gemini_client=self.gemini_client,
+        )
 
         self.commit_extractor = GitHistoryExtractor()
         self.commit_builder = CommitGraphBuilder()
@@ -118,7 +128,8 @@ class RepositoryIndexer:
 
         try:
             self.writer.write(graph)
-
+            self.summary_service.summarize_repository()
+            
         finally:
             self.client.close()
 

@@ -2,7 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-
 class CommitInfo(BaseModel):
     hash: str
     author: str
@@ -10,3 +9,9 @@ class CommitInfo(BaseModel):
     message: str
     timestamp: datetime
     modified_files: list[str]
+
+    intent: str | None = None
+
+    file_diffs: dict[str, str] = Field(
+        default_factory=dict,
+    )
