@@ -1,0 +1,8 @@
+PACKAGE = "Package"
+CLASS = "Class"
+METHOD = "Method"
+FIELD = "Field"
+
+CONTAINS = "CONTAINS"
+DECLARES = "DECLARES"
+HAS_FIELD = "HAS_FIELD"

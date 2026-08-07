@@ -283,8 +283,6 @@ class JavaAnalyzer(BaseAnalyzer):
 
         return parameters
 
-    from tree_sitter import Node
-
     def _extract_method(
         self,
         method_node: Node,
@@ -401,8 +399,7 @@ class JavaAnalyzer(BaseAnalyzer):
             # Type
             #
             elif (
-                field.type == ""
-                and child.type
+                field.type == "" and child.type
                 not in {
                     "modifiers",
                     "variable_declarator",
