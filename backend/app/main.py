@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.graph.neo4j_client import neo4j_client
+from app.api.graph_router import router as graph_router
 from app.api.routes.repositories import router as repository_router
 
 
@@ -31,6 +32,7 @@ app = FastAPI(
 
 
 app.include_router(repository_router)
+app.include_router(graph_router)
 
 
 @app.get("/")
