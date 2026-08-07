@@ -7,7 +7,8 @@ from app.config import settings
 from app.graph.neo4j_client import Neo4jClient
 from app.indexing.repository_indexer import RepositoryIndexer
 from app.ingestion.repository_manager import RepositoryManager
-
+from app.github.git_history_extractor import GitHistoryExtractor
+from app.intelligence.commit_analysis_service import CommitAnalysisService
 
 class RepositoryService:
 
@@ -25,6 +26,7 @@ class RepositoryService:
             parents=True,
             exist_ok=True,
         )
+        self.commit_extractor = GitHistoryExtractor()
 
     def index_repository(
         self,
@@ -103,3 +105,81 @@ class RepositoryService:
             stat.S_IWRITE,
         )
         func(path)
+        
+    def update_repository(
+        self,
+        repository_url: str,
+    ) -> dict:
+        """
+        Pull new commits for an already indexed repository and
+        process only the newly introduced commits.
+
+        This method does not perform initial indexing. If the repository
+        has not previously been cloned, the caller should use
+        index_repository() first.
+        """
+
+        repository_info, old_head, new_head = (
+            self.repository_manager.update(
+                repository_url,
+            )
+        )
+
+        if old_head is None:
+            raise RuntimeError(
+                "Repository has not been indexed yet. "
+                "Run initial indexing first."
+            )
+
+        if old_head == new_head:
+            return {
+                "repository": repository_info.name,
+                "updated": False,
+                "new_commits": 0,
+            }
+
+        repository_path = Path(
+            repository_info.local_path,
+        )
+
+        commits = self.commit_extractor.extract_between(
+            repository_path=repository_path,
+            old_head=old_head,
+            new_head=new_head,
+        )
+
+        if not commits:
+            return {
+                "repository": repository_info.name,
+                "updated": False,
+                "new_commits": 0,
+            }
+
+        self._process_new_commits(
+            repository_path=repository_path,
+            commits=commits,
+        )
+
+        return {
+            "repository": repository_info.name,
+            "updated": True,
+            "new_commits": len(commits),
+        }
+    
+    def _process_new_commits(
+        self,
+        repository_path: Path,
+        commits: list,
+    ) -> None:
+        """
+        Process newly pulled commits.
+
+        The detailed structural graph refresh is delegated to the
+        RepositoryIndexer so parsing/analyzer logic is not duplicated
+        in RepositoryService.
+        """
+
+        self.indexer.update(
+            repository_path=repository_path,
+            commits=commits,
+        )

@@ -33,3 +33,5 @@ tree-sitter-language-pack==0.9.0
 orjson==3.11.3
 
 pandas
+sentence-transformers
+google-generativeai
