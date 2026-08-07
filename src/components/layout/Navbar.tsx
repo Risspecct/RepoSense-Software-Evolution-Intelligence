@@ -3,30 +3,27 @@ import {
   Network, FolderGit2, FileCode, BarChart3, 
   GitBranch, Database, CheckCircle2, AlertCircle, RefreshCw 
 } from 'lucide-react';
-import { checkBackendHealth, connectBackendRepository } from '../services/backendApi';
-import { fetchGitHubRepoData } from '../services/githubApi';
+import { checkBackendHealth } from '../services/backendApi';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  setNodes?: (nodes: any) => void;
-  setEdges?: (edges: any) => void;
-  setRepoName?: (name: string) => void;
   onIngestRepo?: (url: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export const Navbar = ({ 
   activeTab, 
   setActiveTab, 
-  setNodes, 
-  setEdges, 
-  setRepoName, 
-  onIngestRepo 
+  onIngestRepo,
+  isLoading: isLoadingProp
 }: NavbarProps) => {
   // Inside src/components/layout/Navbar.tsx:
   const [inputUrl, setInputUrl] = useState('');
-  const [isIngesting, setIsIngesting] = useState(false);
   const [neo4jOnline, setNeo4jOnline] = useState(false);
+
+  // Use prop if provided, otherwise false
+  const isLoading = isLoadingProp !== undefined ? isLoadingProp : false;
 
   // Check Neo4j Health on initial mount
   useEffect(() => {
@@ -36,27 +33,10 @@ export const Navbar = ({
   }, []);
 
   const handleIngest = async () => {
-    if (!inputUrl) return;
-    setIsIngesting(true);
-
-    try {
-      // 1. Trigger App.tsx onIngestRepo if provided
-      if (onIngestRepo) {
-        await onIngestRepo(inputUrl);
-      } else {
-        // Fallback connecting logic
-        await connectBackendRepository(inputUrl);
-        const res = await fetchGitHubRepoData(inputUrl);
-        if (res && setNodes && setEdges && setRepoName) {
-          setNodes(res.nodes);
-          setEdges(res.edges);
-          setRepoName(res.repoName);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsIngesting(false);
+    if (!inputUrl.trim()) return;
+    
+    if (onIngestRepo) {
+      await onIngestRepo(inputUrl);
     }
   };
 
@@ -76,7 +56,7 @@ export const Navbar = ({
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-bold text-base tracking-wide text-white">RepoMind</h1>
+            <h1 className="font-bold text-base tracking-wide text-white">RepoSense</h1>
             <span className="text-[10px] px-2 py-0.5 bg-[#243B6B] text-[#38BDF8] rounded-full font-bold">
               v1.0
             </span>
@@ -106,10 +86,10 @@ export const Navbar = ({
         />
         <button
           onClick={handleIngest}
-          disabled={isIngesting}
+          disabled={isLoading || !inputUrl.trim()}
           className="px-4 py-1.5 bg-[#243B6B] hover:bg-[#1E293B] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50 shrink-0"
         >
-          {isIngesting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Ingest'}
+          {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Ingest'}
         </button>
       </div>
 

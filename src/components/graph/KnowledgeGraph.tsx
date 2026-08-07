@@ -218,12 +218,22 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
 
             <div className="space-y-1.5 font-mono-code text-[11px]">
               <div className="flex justify-between text-[#5B5F6B]">
-                <span>Config / Infra:</span>
-                <strong className="text-[#171A21]">12 files</strong>
+                <span>Classes:</span>
+                <strong className="text-[#171A21]">
+                  {activeNodes.filter(n => n.data?.category === 'class').length} nodes
+                </strong>
               </div>
               <div className="flex justify-between text-[#5B5F6B]">
-                <span>Source Code:</span>
-                <strong className="text-[#171A21]">48 files</strong>
+                <span>Files:</span>
+                <strong className="text-[#171A21]">
+                  {activeNodes.filter(n => n.data?.category === 'file').length} nodes
+                </strong>
+              </div>
+              <div className="flex justify-between text-[#5B5F6B]">
+                <span>Methods:</span>
+                <strong className="text-[#171A21]">
+                  {activeNodes.filter(n => n.data?.category === 'method').length} nodes
+                </strong>
               </div>
             </div>
           </div>

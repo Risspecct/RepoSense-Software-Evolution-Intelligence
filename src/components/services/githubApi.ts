@@ -1,5 +1,5 @@
 export async function fetchGitHubRepoData(repoUrl: string) {
-  type GraphEdge = {
+  interface GraphEdge {
     id: string;
     source: string;
     target: string;
@@ -7,7 +7,7 @@ export async function fetchGitHubRepoData(repoUrl: string) {
     style: { stroke: string; strokeWidth: number; strokeDasharray?: string };
     label?: string;
     labelStyle?: { fill: string; fontWeight: number; fontSize: number };
-  };
+  }
 
   const defaultFallback = {
     repoName: 'RepoSense / Core',
@@ -168,7 +168,7 @@ export async function fetchGitHubRepoData(repoUrl: string) {
           label: 'AUTHORED',
           labelStyle: { fill: '#2E7D5B', fontWeight: 700, fontSize: 10 },
           style: { stroke: '#2E7D5B', strokeWidth: 2 },
-        },
+        } as GraphEdge,
         {
           id: 'e-file-connect',
           source: `commit-${commits[0].sha.slice(0, 7)}`,
@@ -177,7 +177,7 @@ export async function fetchGitHubRepoData(repoUrl: string) {
           labelStyle: { fill: '#B5442C', fontWeight: 700, fontSize: 10 },
           type: 'default',
           style: { stroke: '#B5442C', strokeWidth: 2 },
-        }
+        } as GraphEdge
       );
     }
 

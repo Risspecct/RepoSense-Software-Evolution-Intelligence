@@ -84,76 +84,84 @@ export async function connectBackendRepository(repoUrl: string) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Fetch Full Repository Graph (POST /repositories/index)
+// 2. Index Repository (POST /repositories/index)
 // ---------------------------------------------------------------------------
-export async function fetchBackendGraphData(repoUrl: string) {
+export async function indexBackendRepository(repoUrl: string): Promise<{ status: string; repository: string } | null> {
   try {
-    const response = await fetch(`${BACKEND_URL}/repositories/index`, {
+    const indexResponse = await fetch(`${BACKEND_URL}/repositories/index`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repository_url: repoUrl }),
     });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-
-    if (data && data.nodes && Array.isArray(data.nodes)) {
-      return parseGraphDocument(data);
+    if (!indexResponse.ok) {
+      const errorText = await indexResponse.text();
+      console.error('Repository indexing failed:', errorText);
+      throw new Error(`Indexing failed: ${indexResponse.status} - ${errorText}`);
     }
 
-    return null;
+    const data = await indexResponse.json();
+    return data;
   } catch (error) {
-    console.error('Failed to fetch indexed backend graph:', error);
-    return null;
+    console.error('Failed to index repository:', error);
+    throw error;
   }
 }
 
-// Helper to convert OpenAPI GraphDocument -> React Flow Nodes & Edges
-function parseGraphDocument(data: any) {
-  const COLUMNS = 4;
-  const X_SPACING = 280;
-  const Y_SPACING = 160;
+// ---------------------------------------------------------------------------
+// 3. Try to Find Main Class (workaround for missing list endpoint)
+// ---------------------------------------------------------------------------
+export async function tryFindMainClass(repoName: string): Promise<string | null> {
+  console.log(`🔍 Searching for main class in repository: ${repoName}`);
+  
+  // Remove hyphens and convert to PascalCase for common Spring Boot naming
+  const cleanRepoName = repoName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+  
+  // Common patterns for Spring Boot and general Java main classes
+  const commonMainClassNames = [
+    'Application',
+    'Main',
+    'App',
+    `${cleanRepoName}Application`,
+    `${repoName}Application`, // Try with original name too
+    `${cleanRepoName}Main`,
+    'SpringApplication',
+    'DemoApplication',
+    'BlogPlatformApplication', // Specific to Blog-Platform-Backend
+    'User', // Common entity classes to bootstrap
+    'UserController',
+    'UserService',
+  ];
 
-  const formattedNodes = data.nodes.map((node: any, index: number) => {
-    const col = index % COLUMNS;
-    const row = Math.floor(index / COLUMNS);
-    const props = node.properties || {};
-    const labelName = props.name || props.id || node.id;
+  console.log(`🔍 Trying class names:`, commonMainClassNames);
 
-    return {
-      id: String(node.id),
-      type: 'customNode',
-      data: {
-        label: labelName,
-        category: String(node.label || props.type || 'class').toLowerCase(),
-        subtext: props.package || node.label || 'Entity',
-        modifiers: props.modifiers || [],
-        annotations: props.annotations || [],
-        rawProperties: props,
-      },
-      position: { x: 100 + col * X_SPACING, y: 100 + row * Y_SPACING },
-    };
-  });
+  for (const className of commonMainClassNames) {
+    try {
+      console.log(`   - Searching for class: ${className}`);
+      const classResponse = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(className)}`);
+      if (classResponse.ok) {
+        const classData = await classResponse.json();
+        console.log(`✅ Found main class: ${classData.id}`);
+        return classData.id; // Return the full class ID
+      } else {
+        console.log(`   ❌ Not found (${classResponse.status})`);
+      }
+    } catch (error) {
+      // Continue trying other class names
+      console.log(`   ❌ Error searching for ${className}:`, error);
+      continue;
+    }
+  }
 
-  const formattedEdges = (data.relationships || []).map((rel: any, index: number) => ({
-    id: `rel-${index}`,
-    source: String(rel.source),
-    target: String(rel.target),
-    type: 'default',
-    label: rel.type || 'CONTAINS',
-    style: { stroke: '#243B6B', strokeWidth: 2 },
-  }));
-
-  return {
-    nodes: formattedNodes,
-    edges: formattedEdges,
-    repoName: data.repository || 'Connected Repo',
-  };
+  console.warn('⚠️ No main class found in common patterns');
+  return null;
 }
 
 // ---------------------------------------------------------------------------
-// 3. Class & Method Lookups
+// 4. Class & Method Lookups
 // ---------------------------------------------------------------------------
 export async function fetchClassByName(className: string): Promise<ClassResponse | null> {
   try {
@@ -176,7 +184,7 @@ export async function fetchMethodsByName(methodName: string): Promise<MethodResp
 }
 
 // ---------------------------------------------------------------------------
-// 4. Class Deep Insights (Endpoints using class_id)
+// 5. Class Deep Insights (Endpoints using class_id)
 // ---------------------------------------------------------------------------
 export async function fetchClassMethods(classId: string): Promise<MethodResponse[] | null> {
   try {
@@ -228,13 +236,58 @@ export async function fetchClassDependents(classId: string): Promise<DependencyG
   }
 }
 
-export async function fetchClassSubgraph(classId: string) {
+export async function fetchClassSubgraph(classId: string, repoName?: string) {
   try {
     const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/subgraph`);
     if (!res.ok) return null;
     const data = await res.json();
-    return parseGraphDocument(data);
+    return parseGraphDocument(data, repoName);
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Convert GraphDocument -> React Flow Nodes & Edges
+// ---------------------------------------------------------------------------
+function parseGraphDocument(data: any, repoName?: string) {
+  const COLUMNS = 4;
+  const X_SPACING = 280;
+  const Y_SPACING = 160;
+
+  const formattedNodes = data.nodes.map((node: any, index: number) => {
+    const col = index % COLUMNS;
+    const row = Math.floor(index / COLUMNS);
+    const props = node.properties || {};
+    const labelName = props.name || props.id || node.id;
+
+    return {
+      id: String(node.id),
+      type: 'customNode',
+      data: {
+        label: labelName,
+        category: String(node.label || props.type || 'class').toLowerCase(),
+        subtext: props.package || node.label || 'Entity',
+        modifiers: props.modifiers || [],
+        annotations: props.annotations || [],
+        rawProperties: props,
+      },
+      position: { x: 100 + col * X_SPACING, y: 100 + row * Y_SPACING },
+    };
+  });
+
+  const formattedEdges = (data.relationships || []).map((rel: any, index: number) => ({
+    id: `rel-${index}`,
+    source: String(rel.source),
+    target: String(rel.target),
+    type: 'default',
+    label: rel.type || 'CONTAINS',
+    style: { stroke: '#243B6B', strokeWidth: 2 },
+  }));
+
+  return {
+    nodes: formattedNodes,
+    edges: formattedEdges,
+    repoName: repoName || 'Connected Repo',
+  };
 }
