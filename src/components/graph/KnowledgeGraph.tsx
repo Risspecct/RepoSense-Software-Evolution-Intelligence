@@ -13,8 +13,7 @@ import { CustomNode } from './CustomNode';
 import { GraphHeaderBar } from './GraphHeaderBar';
 import { ThemeModal, themes, type ThemeConfig } from './ThemeModal';
 import { PathFinderModal } from './PathFinderModal';
-import { EvolutionPlayback } from './EvolutionPlayback';
-import { X, Sparkles, AlertTriangle, FileCode, Compass } from 'lucide-react';
+import { X, Sparkles, AlertTriangle, FileCode } from 'lucide-react';
 
 const nodeTypes = { customNode: CustomNode };
 
@@ -34,9 +33,6 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
   const [isPathOpen, setIsPathOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'files'>('info');
 
-  // Tour State
-  const [tourStep, setTourStep] = useState<number | null>(null);
-
   const onNodesChange = useCallback(
     (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
     [setNodes]
@@ -50,7 +46,6 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
   const activeNodes = nodes;
   const activeEdges = edges;
 
-  // 1. WORKING DEPENDENCY PATH FINDER
   const handleFindPath = (fromId: string, toId: string) => {
     setEdges((prevEdges) =>
       prevEdges.map((edge) => {
@@ -66,31 +61,6 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
     );
   };
 
-  // 2. WORKING STEP-BY-STEP PROJECT TOUR
-  const tourMessages = [
-    'Step 1: Central Repository Engine — Manages main AST code structure.',
-    'Step 2: Commit Stream Sequence — Mapped directly from Git commit history.',
-    'Step 3: Core Source File — Flagged for high historical test regressions.',
-    'Step 4: Active Contributor — Author ownership node mapped in graph.',
-  ];
-
-  const handleStartTour = () => setTourStep(0);
-  const handleNextTourStep = () => {
-    if (tourStep === null) return;
-    if (tourStep >= tourMessages.length - 1) setTourStep(null);
-    else setTourStep(tourStep + 1);
-  };
-
-  // 3. EVOLUTION PLAYBACK SCRUBBER
-  const handleStepChange = (stepIndex: number) => {
-    const visibleCount = (stepIndex + 1) * 4;
-    setNodes((prevNodes) =>
-      prevNodes.map((node, i) => ({
-        ...node,
-        hidden: i > visibleCount && node.data.category === 'commit',
-      }))
-    );
-  };
 
   return (
     <div
@@ -101,22 +71,8 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
       <GraphHeaderBar
         onOpenPathModal={() => setIsPathOpen(true)}
         onOpenThemeModal={() => setIsThemeOpen(!isThemeOpen)}
-        onStartTour={handleStartTour}
+        onStartTour={() => {}}
       />
-
-      {/* Interactive Step-by-Step Tour Banner */}
-      {tourStep !== null && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-[#243B6B] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 font-mono-code text-xs border border-indigo-400/30">
-          <Compass className="w-4 h-4 text-[#38BDF8] animate-spin" />
-          <span>{tourMessages[tourStep]}</span>
-          <button
-            onClick={handleNextTourStep}
-            className="px-3 py-1 bg-[#6366F1] hover:bg-indigo-500 rounded-lg font-bold text-white transition cursor-pointer"
-          >
-            {tourStep === tourMessages.length - 1 ? 'Finish' : 'Next Step →'}
-          </button>
-        </div>
-      )}
 
       <ReactFlow
         nodes={activeNodes}
@@ -138,9 +94,6 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
           pannable
         />
       </ReactFlow>
-
-      {/* Scrubber Controls */}
-      <EvolutionPlayback onStepChange={handleStepChange} maxSteps={5} />
 
       {/* Right Collapsible Panel (INFO / FILES) */}
       <div className="absolute top-20 right-4 w-80 bg-white/95 border border-[#E4E1D8] rounded-2xl shadow-xl p-4 text-[#171A21] z-40 space-y-3 backdrop-blur-md">

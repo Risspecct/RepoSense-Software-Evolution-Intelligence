@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Network, FolderGit2, FileCode, BarChart3, 
-  GitBranch, Database, CheckCircle2, AlertCircle, RefreshCw 
+  GitBranch, RefreshCw 
 } from 'lucide-react';
-import { checkBackendHealth } from '../services/backendApi';
 
 interface NavbarProps {
   activeTab: string;
@@ -20,17 +19,9 @@ export const Navbar = ({
 }: NavbarProps) => {
   // Inside src/components/layout/Navbar.tsx:
   const [inputUrl, setInputUrl] = useState('');
-  const [neo4jOnline, setNeo4jOnline] = useState(false);
 
   // Use prop if provided, otherwise false
   const isLoading = isLoadingProp !== undefined ? isLoadingProp : false;
-
-  // Check Neo4j Health on initial mount
-  useEffect(() => {
-    checkBackendHealth().then((res) => {
-      setNeo4jOnline(res.neo4j);
-    });
-  }, []);
 
   const handleIngest = async () => {
     if (!inputUrl.trim()) return;
@@ -51,26 +42,8 @@ export const Navbar = ({
     <header className="h-20 bg-[#171A21] border-b border-[#2A2D3D] px-6 flex items-center justify-between text-white font-mono-code z-50">
       {/* Brand */}
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-[#243B6B] rounded-xl text-[#38BDF8] shadow-md">
-          <Database className="w-5 h-5" />
-        </div>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-bold text-base tracking-wide text-white">RepoSense</h1>
-            <span className="text-[10px] px-2 py-0.5 bg-[#243B6B] text-[#38BDF8] rounded-full font-bold">
-              v1.0
-            </span>
-            {/* Health Status Badge */}
-            <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-              neo4jOnline 
-                ? 'bg-[#2E7D5B]/20 text-[#2E7D5B] border border-[#2E7D5B]/40' 
-                : 'bg-[#B5442C]/20 text-[#B5442C] border border-[#B5442C]/40'
-            }`}>
-              {neo4jOnline ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
-              {neo4jOnline ? 'NEO4J CONNECTED' : 'NEO4J OFFLINE'}
-            </span>
-          </div>
-          <p className="text-[10px] text-[#94A3B8]">Software Evolution Intelligence</p>
+          <h1 className="font-bold text-base tracking-wide text-white">RepoSense - Software Evolution Intelligence</h1>
         </div>
       </div>
 

@@ -12,7 +12,7 @@ export const GraphHeaderBar = ({
   onStartTour,
 }: GraphHeaderBarProps) => {
   return (
-    <div className="absolute top-4 left-4 right-4 z-40 flex flex-wrap items-center justify-between gap-3 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-[#E4E1D8] shadow-md text-xs font-mono-code">
+    <div className="absolute top-0 left-4 right-4 z-40 flex flex-wrap items-center justify-between gap-3 bg-white/90 backdrop-blur-md p-2 rounded-xl border border-[#E4E1D8] shadow-md text-xs font-mono-code">
       <div className="flex items-center gap-2">
         <span className="px-3 py-1 rounded-full bg-[#243B6B] text-white text-[11px] font-bold tracking-[0.15em] uppercase">
           Structural View
