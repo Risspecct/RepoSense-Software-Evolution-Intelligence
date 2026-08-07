@@ -1,8 +1,14 @@
-PACKAGE = "Package"
-CLASS = "Class"
-METHOD = "Method"
-FIELD = "Field"
+from enum import StrEnum
 
-CONTAINS = "CONTAINS"
-DECLARES = "DECLARES"
-HAS_FIELD = "HAS_FIELD"
+
+class NodeLabel(StrEnum):
+    PACKAGE = "Package"
+    CLASS = "Class"
+    FIELD = "Field"
+    METHOD = "Method"
+
+
+class RelationshipType(StrEnum):
+    CONTAINS = "CONTAINS"
+    DECLARES = "DECLARES"
+    HAS_FIELD = "HAS_FIELD"

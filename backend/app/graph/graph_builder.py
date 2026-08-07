@@ -2,10 +2,13 @@ from app.analysis.models.analysis_result import AnalysisResult
 from app.graph.models.graph_document import GraphDocument
 from app.graph.models.graph_node import GraphNode
 from app.graph.models.graph_relationship import GraphRelationship
-from app.graph.constants import CONTAINS, DECLARES, HAS_FIELD, PACKAGE, CLASS, FIELD, METHOD
 from app.analysis.models.class_info import ClassInfo
 from app.analysis.models.method_info import MethodInfo
 from app.analysis.models.field_info import FieldInfo
+from app.graph.constants import (
+    NodeLabel,
+    RelationshipType,
+)
 
 
 class GraphBuilder:
@@ -46,7 +49,7 @@ class GraphBuilder:
                 GraphRelationship(
                     source=package_node.id,
                     target=class_node.id,
-                    type=CONTAINS,
+                    type=RelationshipType.CONTAINS,
                 )
             )
 
@@ -66,7 +69,7 @@ class GraphBuilder:
                     GraphRelationship(
                         source=class_node.id,
                         target=field_node.id,
-                        type=HAS_FIELD,
+                        type=RelationshipType.HAS_FIELD,
                     )
                 )
 
@@ -86,7 +89,7 @@ class GraphBuilder:
                     GraphRelationship(
                         source=class_node.id,
                         target=method_node.id,
-                        type=DECLARES,
+                        type=RelationshipType.DECLARES,
                     )
                 )
 
@@ -102,7 +105,7 @@ class GraphBuilder:
 
         return GraphNode(
             id=package_name,
-            label=PACKAGE,
+            label=NodeLabel.PACKAGE,
             properties={
                 "name": package_name,
             },
@@ -121,7 +124,7 @@ class GraphBuilder:
 
         return GraphNode(
             id=class_id,
-            label=CLASS,
+            label=NodeLabel.CLASS,
             properties={
                 "name": class_info.name,
                 "type": class_info.type.value,
@@ -145,7 +148,7 @@ class GraphBuilder:
 
         return GraphNode(
             id=field_id,
-            label=FIELD,
+            label=NodeLabel.FIELD,
             properties={
                 "name": field.name,
                 "type": field.type,
@@ -175,16 +178,27 @@ class GraphBuilder:
             f"({parameter_signature})"
         )
 
+        properties = {
+            "name": method.name,
+            "modifiers": method.modifiers,
+            "annotations": method.annotations,
+            "is_constructor": method.is_constructor,
+            "parameters": [
+                {
+                    "name": parameter.name,
+                    "type": parameter.type,
+                }
+                for parameter in method.parameters
+            ],
+        }
+
+        if method.return_type is not None:
+            properties["return_type"] = method.return_type
+
         return GraphNode(
             id=method_id,
-            label=METHOD,
-            properties={
-                "name": method.name,
-                "return_type": method.return_type,
-                "modifiers": method.modifiers,
-                "annotations": method.annotations,
-                "is_constructor": method.is_constructor,
-            },
+            label=NodeLabel.METHOD,
+            properties=properties,
         )
 
     def _add_relationship(
