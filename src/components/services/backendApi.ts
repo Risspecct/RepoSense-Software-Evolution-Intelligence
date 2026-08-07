@@ -49,6 +49,19 @@ export interface DependencyGroupResponse {
   implements: ClassResponse[];
 }
 
+export interface ChangeCouplingItem {
+  file1: string;
+  file2: string;
+  count: number;
+  confidence: number;
+}
+
+export interface ChangeCouplingResponse {
+  status: string;
+  count: number;
+  data: ChangeCouplingItem[];
+}
+
 // ---------------------------------------------------------------------------
 // 1. Health & Ingestion
 // ---------------------------------------------------------------------------
@@ -232,6 +245,16 @@ export async function fetchClassHistory(classId: string): Promise<ClassHistoryRe
 export async function fetchClassDependencies(classId: string): Promise<DependencyGroupResponse | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/dependencies`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchChangeCoupling(): Promise<ChangeCouplingResponse | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/change-coupling/`);
     if (!res.ok) return null;
     return await res.json();
   } catch {

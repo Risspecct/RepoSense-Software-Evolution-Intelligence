@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Folder, FileCode, Search, User, Clock, 
   ChevronRight, ChevronDown
 } from 'lucide-react';
+import { fetchClassByName, fetchClassHistory } from '../services/backendApi';
 
 interface FileNode {
   name: string;
@@ -44,49 +45,69 @@ const sampleFileTree: FileNode[] = [
   { name: 'README.md', type: 'file', path: 'README.md', size: '2.1 KB', risk: 'low' },
 ];
 
-const mockCommitTimeline = [
-  {
-    hash: '89a1f4c',
-    title: 'PR #104: JWT Auth Refactor',
-    author: 'Alex Rivera',
-    time: '2 hours ago',
-    risk: 'high',
-    changes: '+142 -38 lines',
-    filesTouched: ['jwt_verifier.py', 'checkout_session.py'],
-  },
-  {
-    hash: '3f29d01',
-    title: 'PR #103: Update payment session timeouts',
-    author: 'Sam Chen',
-    time: '5 hours ago',
-    risk: 'low',
-    changes: '+18 -4 lines',
-    filesTouched: ['stripe_adapter.py'],
-  },
-  {
-    hash: '12b84e9',
-    title: 'PR #102: Fix auth token race conditions',
-    author: 'Alex Rivera',
-    time: '1 day ago',
-    risk: 'high',
-    changes: '+95 -62 lines',
-    filesTouched: ['jwt_verifier.py', 'session_manager.py'],
-  },
-  {
-    hash: 'f9012a4',
-    title: 'PR #101: Docker containerization',
-    author: 'DevOps Engine',
-    time: '2 days ago',
-    risk: 'low',
-    changes: '+45 -0 lines',
-    filesTouched: ['Dockerfile'],
-  },
-];
+interface CommitTimelineItem {
+  hash: string;
+  title: string;
+  author: string;
+  time: string;
+  risk: 'high' | 'low';
+  changes: string;
+  filesTouched: string[];
+}
 
 export const RepositoryExplorer = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ 'src': true, 'src/auth': true });
+  const [commitTimeline, setCommitTimeline] = useState<CommitTimelineItem[]>([]);
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState(false);
+
+  useEffect(() => {
+    const loadTimeline = async () => {
+      if (!selectedFile) {
+        setCommitTimeline([]);
+        return;
+      }
+
+      const fileName = selectedFile.path.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '');
+      if (!fileName) {
+        setCommitTimeline([]);
+        return;
+      }
+
+      setIsLoadingTimeline(true);
+      try {
+        const classData = await fetchClassByName(fileName);
+        if (!classData?.id) {
+          setCommitTimeline([]);
+          return;
+        }
+
+        const historyData = await fetchClassHistory(classData.id);
+        const mappedTimeline: CommitTimelineItem[] = (historyData?.history ?? []).map((entry) => ({
+          hash: entry.hash.slice(0, 7),
+          title: entry.message || 'Repository update',
+          author: entry.author || 'Unknown author',
+          time: new Date(entry.timestamp).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          }),
+          risk: (entry.file_path ? 'high' : 'low') as 'high' | 'low',
+          changes: entry.file_path ? '1 file touched' : 'history entry',
+          filesTouched: entry.file_path ? [entry.file_path] : [],
+        }));
+
+        setCommitTimeline(mappedTimeline);
+      } catch {
+        setCommitTimeline([]);
+      } finally {
+        setIsLoadingTimeline(false);
+      }
+    };
+
+    loadTimeline();
+  }, [selectedFile]);
 
   const toggleFolder = (path: string) => {
     setOpenFolders((prev) => ({ ...prev, [path]: !prev[path] }));
@@ -174,11 +195,15 @@ export const RepositoryExplorer = () => {
           <div className="lg:col-span-2 bg-white border border-[#E4E1D8] rounded-2xl p-5 shadow-sm space-y-4">
             <h3 className="text-xs font-mono-code uppercase font-bold text-[#5B5F6B] tracking-wider pb-2 border-b border-[#E4E1D8] flex items-center justify-between">
               <span>Commit History Timeline</span>
-              <span className="text-[10px] text-[#243B6B] bg-[#243B6B]/10 px-2 py-0.5 rounded">4 Commits Logged</span>
+              <span className="text-[10px] text-[#243B6B] bg-[#243B6B]/10 px-2 py-0.5 rounded">{isLoadingTimeline ? 'Loading…' : `${commitTimeline.length} Commits Logged`}</span>
             </h3>
 
             <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E4E1D8]">
-              {mockCommitTimeline.map((commit, idx) => (
+              {isLoadingTimeline ? (
+                <div className="p-4 text-sm text-[#5B5F6B] font-mono-code">Loading live commit history…</div>
+              ) : commitTimeline.length === 0 ? (
+                <div className="p-4 text-sm text-[#5B5F6B] font-mono-code">No commit history available for the selected file yet.</div>
+              ) : commitTimeline.map((commit, idx) => (
                 <div key={idx} className="relative group">
                   {/* Timeline Dot */}
                   <div className={`absolute -left-[19px] top-1 w-3.5 h-3.5 rounded-full border-2 bg-white ${
