@@ -7,7 +7,7 @@
 Transforming software repositories into a living architectural knowledge graph.
 </p>
 
-<img src="docs/images/architecture-flow.jpeg" width="90%" alt="RepoSense Architecture"/>
+<img src="architecture-flow.jpg" width="90%" alt="RepoSense Architecture"/>
 
 <br>
 
