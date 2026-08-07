@@ -432,3 +432,142 @@ Commit:
             f"Failed to update intent for commit "
             f"'{commit.hash}'."
         )
+def generate_historical_intents(
+    self,
+    commits: list[CommitInfo],
+    batch_size: int = 20,
+) -> None:
+    """
+    Generate intents for historical commits during initial indexing.
+
+    Historical commits must not trigger summary regeneration because
+    the graph represents the repository's current state.
+    """
+
+    if batch_size <= 0:
+        raise ValueError(
+            "batch_size must be greater than 0."
+        )
+
+    for index in range(0, len(commits), batch_size):
+        batch = commits[index:index + batch_size]
+
+        self._generate_intent_batch(batch)
+
+
+    def _generate_intent_batch(
+        self,
+        commits: list[CommitInfo],
+    ) -> None:
+        """
+        Generate and persist intents for one batch of commits.
+        """
+    
+        if not commits:
+            return
+    
+        commit_context = [
+            {
+                "commit_hash": commit.hash,
+                "message": commit.message,
+                "modified_files": commit.modified_files,
+                "file_diffs": commit.file_diffs,
+            }
+            for commit in commits
+        ]
+    
+        prompt = f"""
+    You are analyzing Git commits for a software repository
+    code-intelligence system.
+    
+    Determine the primary intent of every commit provided.
+    
+    Requirements:
+    - Preserve each commit_hash exactly.
+    - Return exactly one intent for every commit.
+    - Describe why the change appears to have been made.
+    - Use the commit message, modified files, and diff as evidence.
+    - Do not merely repeat the commit message.
+    - Do not invent unsupported motivations.
+    - Keep each intent concise, preferably one sentence.
+    - Do not include markdown.
+    
+    Return only valid JSON in exactly this structure:
+    
+    {{
+      "commits": [
+        {{
+          "commit_hash": "exact commit hash",
+          "intent": "concise intent"
+        }}
+      ]
+    }}
+    
+    Commits:
+    
+    {json.dumps(
+        commit_context,
+        indent=2,
+        ensure_ascii=False,
+    )}
+    """.strip()
+    
+        result = self.gemini_client.generate_structured(
+            prompt=prompt,
+            response_model=BatchCommitIntentResult,
+        )
+    
+        expected_hashes = {
+            commit.hash
+            for commit in commits
+        }
+    
+        returned_hashes: set[str] = set()
+    
+        for item in result.commits:
+            if item.commit_hash not in expected_hashes:
+                raise RuntimeError(
+                    "Gemini returned an unexpected commit hash: "
+                    f"'{item.commit_hash}'."
+                )
+    
+            if item.commit_hash in returned_hashes:
+                raise RuntimeError(
+                    "Gemini returned a duplicate commit hash: "
+                    f"'{item.commit_hash}'."
+                )
+    
+            intent = item.intent.strip()
+    
+            if not intent:
+                raise RuntimeError(
+                    "Gemini returned an empty intent for "
+                    f"commit '{item.commit_hash}'."
+                )
+    
+            returned_hashes.add(
+                item.commit_hash,
+            )
+    
+            updated = (
+                self.graph_query_service.update_commit_intent(
+                    commit_hash=item.commit_hash,
+                    intent=intent,
+                )
+            )
+    
+            if not updated:
+                raise RuntimeError(
+                    "Failed to update intent for commit "
+                    f"'{item.commit_hash}'."
+                )
+    
+        missing_hashes = (
+            expected_hashes - returned_hashes
+        )
+    
+        if missing_hashes:
+            raise RuntimeError(
+                "Gemini did not return intents for commits: "
+                f"{sorted(missing_hashes)}"
+            )
