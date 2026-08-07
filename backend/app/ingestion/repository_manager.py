@@ -14,27 +14,33 @@ class RepositoryManager:
 
     def __init__(self) -> None:
         self.repository_root = Path(settings.REPOSITORY_STORAGE)
-        self.repository_root.mkdir(parents=True, exist_ok=True)
+        self.repository_root.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
-    def connect(self, repository_url: str) -> RepositoryInfo:
+    def connect(
+        self,
+        repository_url: str,
+    ) -> RepositoryInfo:
         """
         Clone a repository if it does not exist locally.
         Otherwise, pull the latest changes.
-
-        Args:
-            repository_url: GitHub repository URL.
-
-        Returns:
-            RepositoryInfo containing repository metadata.
         """
-        owner, repository_name = self._extract_repository_info(repository_url)
-
-        repository_path = self._get_repository_path(repository_name)
+        owner, repository_name = self._extract_repository_info(
+            repository_url,
+        )
+        repository_path = self._get_repository_path(
+            repository_name,
+        )
 
         if repository_path.exists():
             self._pull(repository_path)
         else:
-            self._clone(repository_url, repository_path)
+            self._clone(
+                repository_url,
+                repository_path,
+            )
 
         repo = Repo(repository_path)
 
@@ -49,31 +55,34 @@ class RepositoryManager:
         self,
         repository_url: str,
     ) -> tuple[str, str]:
-        """
-        Extract the repository owner and name from a GitHub URL.
-
-        Raises:
-            ValueError: If the URL is not a valid GitHub repository URL.
-        """
         parsed_url = urlparse(repository_url)
 
-        if parsed_url.netloc not in {"github.com", "www.github.com"}:
-            raise ValueError("Only GitHub repositories are currently supported.")
+        if parsed_url.netloc not in {
+            "github.com",
+            "www.github.com",
+        }:
+            raise ValueError(
+                "Only GitHub repositories are currently supported."
+            )
 
         path_parts = parsed_url.path.strip("/").split("/")
 
         if len(path_parts) < 2:
-            raise ValueError("Invalid GitHub repository URL.")
+            raise ValueError(
+                "Invalid GitHub repository URL."
+            )
 
         owner = path_parts[0]
-        repository_name = path_parts[1].removesuffix(".git")
+        repository_name = path_parts[1].removesuffix(
+            ".git"
+        )
 
         return owner, repository_name
 
-    def _get_repository_path(self, repository_name: str) -> Path:
-        """
-        Returns the local path for the repository.
-        """
+    def _get_repository_path(
+        self,
+        repository_name: str,
+    ) -> Path:
         return self.repository_root / repository_name
 
     def _clone(
@@ -81,35 +90,26 @@ class RepositoryManager:
         repository_url: str,
         repository_path: Path,
     ) -> None:
-        """
-        Clone a repository.
-
-        Raises:
-            RuntimeError: If cloning fails.
-        """
         try:
-            Repo.clone_from(repository_url, repository_path)
+            Repo.clone_from(
+                repository_url,
+                repository_path,
+            )
 
-        except GitCommandError as e:
+        except GitCommandError as error:
             raise RuntimeError(
-                f"Failed to clone repository: {e}"
-            ) from e
+                f"Failed to clone repository: {error}"
+            ) from error
 
     def _pull(
         self,
         repository_path: Path,
     ) -> None:
-        """
-        Pull the latest changes for an existing repository.
-
-        Raises:
-            RuntimeError: If pull fails.
-        """
         try:
             repo = Repo(repository_path)
             repo.remotes.origin.pull()
 
-        except GitCommandError as e:
+        except GitCommandError as error:
             raise RuntimeError(
-                f"Failed to update repository: {e}"
-            ) from e
+                f"Failed to update repository: {error}"
+            ) from error

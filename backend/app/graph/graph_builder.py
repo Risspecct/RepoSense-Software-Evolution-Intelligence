@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.analysis.models.analysis_result import AnalysisResult
 from app.graph.models.graph_document import GraphDocument
 from app.graph.models.graph_node import GraphNode
@@ -15,7 +17,19 @@ class GraphBuilder:
     """
     Converts an AnalysisResult into a GraphDocument.
     """
-    def build(self, analysis: AnalysisResult,) -> GraphDocument:
+    IGNORED_IMPORT_PREFIXES = (
+        "java.",
+        "javax.",
+        "org.springframework.",
+        "lombok.",
+        "jakarta.",
+    )
+
+    def build(
+        self,
+        analysis: AnalysisResult,
+        symbol_index: dict[str, str] | None = None,
+    ) -> GraphDocument:
 
         if analysis.package is None:
             raise ValueError(
@@ -23,6 +37,22 @@ class GraphBuilder:
             )
 
         graph = GraphDocument()
+        symbol_index = symbol_index or {}
+        class_nodes: dict[str, str] = {}
+
+        if analysis.file_path is None:
+            raise ValueError(
+                "AnalysisResult must contain a file_path before building a graph."
+            )
+
+        #
+        # File
+        #
+        file_node = self._build_file(
+            analysis.file_path,
+        )
+
+        graph.nodes.append(file_node)
 
         #
         # Package
@@ -43,11 +73,20 @@ class GraphBuilder:
                 cls,
             )
 
+            class_nodes[cls.name] = class_node.id
             graph.nodes.append(class_node)
 
             graph.relationships.append(
                 GraphRelationship(
                     source=package_node.id,
+                    target=class_node.id,
+                    type=RelationshipType.CONTAINS,
+                )
+            )
+
+            graph.relationships.append(
+                GraphRelationship(
+                    source=file_node.id,
                     target=class_node.id,
                     type=RelationshipType.CONTAINS,
                 )
@@ -93,6 +132,13 @@ class GraphBuilder:
                     )
                 )
 
+        self._add_cross_file_relationships(
+            graph=graph,
+            analysis=analysis,
+            class_nodes=class_nodes,
+            symbol_index=symbol_index,
+        )
+
         return graph
 
     def _build_package(
@@ -108,6 +154,23 @@ class GraphBuilder:
             label=NodeLabel.PACKAGE,
             properties={
                 "name": package_name,
+            },
+        )
+
+    def _build_file(
+        self,
+        file_path: str,
+    ) -> GraphNode:
+        """
+        Creates a file node.
+        """
+
+        return GraphNode(
+            id=f"file:{file_path}",
+            label=NodeLabel.FILE,
+            properties={
+                "path": file_path,
+                "name": Path(file_path).name,
             },
         )
 
@@ -201,7 +264,186 @@ class GraphBuilder:
             properties=properties,
         )
 
-    def _add_relationship(
+    def _add_cross_file_relationships(
         self,
-    ) -> GraphRelationship:
-        raise NotImplementedError
+        graph: GraphDocument,
+        analysis: AnalysisResult,
+        class_nodes: dict[str, str],
+        symbol_index: dict[str, str],
+    ) -> None:
+        for cls in analysis.classes:
+            class_id = class_nodes.get(cls.name)
+
+            if class_id is None:
+                continue
+
+            if cls.extends:
+                target_id = self._resolve_symbol(
+                    raw_symbol=cls.extends,
+                    package_name=analysis.package,
+                    imports=analysis.imports,
+                    symbol_index=symbol_index,
+                )
+
+                if target_id is not None:
+                    graph.relationships.append(
+                        GraphRelationship(
+                            source=class_id,
+                            target=target_id,
+                            type=RelationshipType.EXTENDS,
+                        )
+                    )
+
+            for interface_name in cls.implements:
+                target_id = self._resolve_symbol(
+                    raw_symbol=interface_name,
+                    package_name=analysis.package,
+                    imports=analysis.imports,
+                    symbol_index=symbol_index,
+                )
+
+                if target_id is not None:
+                    graph.relationships.append(
+                        GraphRelationship(
+                            source=class_id,
+                            target=target_id,
+                            type=RelationshipType.IMPLEMENTS,
+                        )
+                    )
+
+            for import_name in analysis.imports:
+                if self._should_ignore_import(import_name):
+                    continue
+
+                target_id = self._resolve_import(
+                    import_name=import_name,
+                    symbol_index=symbol_index,
+                )
+
+                if target_id is not None:
+                    graph.relationships.append(
+                        GraphRelationship(
+                            source=class_id,
+                            target=target_id,
+                            type=RelationshipType.IMPORTS,
+                        )
+                    )
+
+    def _resolve_symbol(
+        self,
+        raw_symbol: str,
+        package_name: str | None,
+        imports: list[str],
+        symbol_index: dict[str, str],
+    ) -> str | None:
+        symbol = self._normalize_symbol_name(
+            raw_symbol,
+        )
+
+        if not symbol:
+            return None
+
+        direct_target = symbol_index.get(symbol)
+
+        if direct_target is not None:
+            return direct_target
+
+        for import_name in imports:
+            normalized_import = self._normalize_import_name(
+                import_name,
+            )
+
+            if normalized_import is None:
+                continue
+
+            if normalized_import.rsplit(".", 1)[-1] != symbol:
+                continue
+
+            target_id = symbol_index.get(normalized_import)
+
+            if target_id is not None:
+                return target_id
+
+        if package_name is not None:
+            local_target = symbol_index.get(
+                f"{package_name}.{symbol}"
+            )
+
+            if local_target is not None:
+                return local_target
+
+        return None
+
+    def _resolve_import(
+        self,
+        import_name: str,
+        symbol_index: dict[str, str],
+    ) -> str | None:
+        normalized_import = self._normalize_import_name(
+            import_name,
+        )
+
+        if normalized_import is None:
+            return None
+
+        return symbol_index.get(normalized_import)
+
+    def _normalize_import_name(
+        self,
+        import_name: str,
+    ) -> str | None:
+        normalized_import = import_name.removeprefix(
+            "static "
+        ).strip()
+
+        if normalized_import.endswith(".*"):
+            return None
+
+        return self._normalize_symbol_name(
+            normalized_import,
+        )
+
+    def _normalize_symbol_name(
+        self,
+        symbol_name: str,
+    ) -> str:
+        normalized: list[str] = []
+        generic_depth = 0
+
+        for character in symbol_name.strip():
+            if character == "<":
+                generic_depth += 1
+                continue
+
+            if character == ">":
+                generic_depth = max(0, generic_depth - 1)
+                continue
+
+            if generic_depth == 0:
+                normalized.append(character)
+
+        symbol = "".join(normalized).strip()
+
+        if symbol.startswith("? extends "):
+            symbol = symbol.removeprefix("? extends ").strip()
+        elif symbol.startswith("? super "):
+            symbol = symbol.removeprefix("? super ").strip()
+
+        if "|" in symbol:
+            symbol = symbol.split("|", 1)[0].strip()
+
+        symbol = symbol.removesuffix("[]").removesuffix("...").strip()
+
+        return symbol
+
+    def _should_ignore_import(
+        self,
+        import_name: str,
+    ) -> bool:
+        normalized_import = import_name.removeprefix(
+            "static "
+        ).strip()
+
+        return normalized_import.startswith(
+            self.IGNORED_IMPORT_PREFIXES
+        )

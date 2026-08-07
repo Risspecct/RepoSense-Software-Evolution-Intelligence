@@ -12,6 +12,10 @@ class RepositoryConnectRequest(BaseModel):
     url: HttpUrl
 
 
+class RepositoryIndexRequest(BaseModel):
+    repository_url: HttpUrl
+
+
 class RepositoryInfo(BaseModel):
     name: str
     owner: str
@@ -22,3 +26,8 @@ class RepositoryInfo(BaseModel):
 class RepositoryConnectResponse(BaseModel):
     status: RepositoryStatus
     repository: RepositoryInfo
+
+
+class RepositoryIndexResponse(BaseModel):
+    status: str
+    repository: str
