@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from neo4j.exceptions import Neo4jError
 
 from app.api.graph_models import (
+    ClassHistoryResponse,
     ClassResponse,
     DependencyGroupResponse,
     FieldResponse,
@@ -178,6 +179,36 @@ def get_class_fields(
         )
         for field in fields
     ]
+
+
+@router.get(
+    "/classes/{class_id}/history",
+    response_model=ClassHistoryResponse,
+    summary="Get class history",
+    description="Return the commit history for the given class.",
+)
+def get_class_history(
+    class_id: str,
+    service: GraphQueryService = Depends(
+        get_graph_query_service,
+    ),
+) -> ClassHistoryResponse:
+    _require_class(
+        class_id,
+        service,
+    )
+
+    try:
+        history = service.get_class_history(class_id)
+    except (Neo4jError, RuntimeError) as error:
+        _raise_query_error(error)
+
+    return ClassHistoryResponse.model_validate(
+        {
+            "class_id": class_id,
+            "history": history,
+        }
+    )
 
 
 @router.get(
