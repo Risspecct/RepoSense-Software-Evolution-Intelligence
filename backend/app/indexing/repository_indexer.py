@@ -1,10 +1,12 @@
 from pathlib import Path
 
 from app.analysis.analyzer_factory import AnalyzerFactory
-from app.graph.neo4j_client import Neo4jClient
+from app.github.commit_graph_builder import CommitGraphBuilder
+from app.github.git_history_extractor import GitHistoryExtractor
 from app.graph.graph_builder import GraphBuilder
 from app.graph.graph_writer import GraphWriter
 from app.graph.models.graph_document import GraphDocument
+from app.graph.neo4j_client import Neo4jClient
 from app.ingestion.file_scanner import FileScanner
 from app.models.source_file import ProgrammingLanguage, SourceFile
 from app.parsers.parser_factory import ParserFactory
@@ -28,6 +30,9 @@ class RepositoryIndexer:
         self.builder = GraphBuilder()
         self.writer = GraphWriter(client)
 
+        self.commit_extractor = GitHistoryExtractor()
+        self.commit_builder = CommitGraphBuilder()
+
     def index(
         self,
         repository_path: Path,
@@ -37,6 +42,7 @@ class RepositoryIndexer:
         """
 
         graph = GraphDocument()
+
         analyses = []
 
         files = self.scanner.scan(repository_path)
@@ -76,13 +82,36 @@ class RepositoryIndexer:
             analyses,
         )
 
+        # ----------------------------------
+        # Build structural graph
+        # ----------------------------------
+
         for analysis in analyses:
+
             file_graph = self.builder.build(
                 analysis,
                 symbol_index=symbol_index,
             )
 
             graph.merge(file_graph)
+
+        # ----------------------------------
+        # Build commit graph
+        # ----------------------------------
+
+        commits = self.commit_extractor.extract(
+            repository_path,
+        )
+
+        commit_graph = self.commit_builder.build(
+            commits,
+        )
+
+        graph.merge(commit_graph)
+
+        # ----------------------------------
+        # Persist graph
+        # ----------------------------------
 
         self.client.connect()
 
@@ -96,16 +125,20 @@ class RepositoryIndexer:
         self,
         analyses: list,
     ) -> dict[str, str]:
+
         symbol_index: dict[str, str] = {}
 
         for analysis in analyses:
+
             if analysis.package is None:
                 continue
 
             for cls in analysis.classes:
+
                 class_id = (
                     f"{analysis.package}.{cls.name}"
                 )
+
                 symbol_index[class_id] = class_id
 
         return symbol_index

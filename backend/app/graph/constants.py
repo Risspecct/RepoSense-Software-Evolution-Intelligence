@@ -6,6 +6,8 @@ class NodeLabel(StrEnum):
     CLASS = "Class"
     FIELD = "Field"
     METHOD = "Method"
+    COMMIT = "Commit"
+    FILE = "File"
 
 
 class RelationshipType(StrEnum):
@@ -15,3 +17,4 @@ class RelationshipType(StrEnum):
     EXTENDS = "EXTENDS"
     IMPLEMENTS = "IMPLEMENTS"
     IMPORTS = "IMPORTS"
+    MODIFIED = "MODIFIED"
