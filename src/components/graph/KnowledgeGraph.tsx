@@ -1,5 +1,4 @@
-// Replace Line 1:
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -13,7 +12,8 @@ import { CustomNode } from './CustomNode';
 import { GraphHeaderBar } from './GraphHeaderBar';
 import { ThemeModal, themes, type ThemeConfig } from './ThemeModal';
 import { PathFinderModal } from './PathFinderModal';
-import { X, Sparkles, AlertTriangle, FileCode } from 'lucide-react';
+import { X, Sparkles, AlertTriangle, FileCode, History, GitCommit, User, Loader2 } from 'lucide-react';
+import { fetchClassHistory } from '../services/backendApi';
 
 const nodeTypes = { customNode: CustomNode };
 
@@ -31,7 +31,10 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
   
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isPathOpen, setIsPathOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'files'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'files' | 'history'>('info');
+  const [commitHistory, setCommitHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const onNodesChange = useCallback(
     (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -59,6 +62,37 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
         return { ...edge, style: { stroke: '#CBD5E1', strokeWidth: 1, opacity: 0.3 } };
       })
     );
+  };
+
+  // Load commit history when HISTORY tab is activated and a class node is selected
+  useEffect(() => {
+    if (activeTab === 'history' && selectedNode && selectedNode.data.category === 'class') {
+      loadCommitHistory(selectedNode.id);
+    }
+  }, [activeTab, selectedNode]);
+
+  const loadCommitHistory = async (classId: string) => {
+    setIsLoadingHistory(true);
+    setHistoryError(null);
+    setCommitHistory([]);
+
+    try {
+      console.log(`📜 Loading commit history for class: ${classId}`);
+      const historyData = await fetchClassHistory(classId);
+      
+      if (historyData && historyData.history) {
+        console.log(`✅ Loaded ${historyData.history.length} commits`);
+        setCommitHistory(historyData.history);
+      } else {
+        setCommitHistory([]);
+      }
+    } catch (err) {
+      console.error('Failed to load commit history:', err);
+      setHistoryError('Failed to load commit history');
+      setCommitHistory([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
 
@@ -95,7 +129,7 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
         />
       </ReactFlow>
 
-      {/* Right Collapsible Panel (INFO / FILES) */}
+      {/* Right Collapsible Panel (INFO / FILES / HISTORY) */}
       <div className="absolute top-20 right-4 w-80 bg-white/95 border border-[#E4E1D8] rounded-2xl shadow-xl p-4 text-[#171A21] z-40 space-y-3 backdrop-blur-md">
         <div className="flex border-b border-[#E4E1D8] pb-2 font-mono-code text-xs">
           <button
@@ -113,6 +147,15 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
             }`}
           >
             FILES
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            disabled={!selectedNode || selectedNode.data.category !== 'class'}
+            className={`flex-1 py-1 text-center font-bold border-b-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              activeTab === 'history' ? 'border-[#243B6B] text-[#243B6B]' : 'border-transparent text-[#5B5F6B]'
+            }`}
+          >
+            HISTORY
           </button>
         </div>
 
@@ -164,6 +207,78 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
                 <span className="truncate">{n.data.label}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="space-y-2 max-h-96 overflow-y-auto text-xs">
+            {!selectedNode || selectedNode.data.category !== 'class' ? (
+              <div className="p-4 text-center text-[#5B5F6B] font-mono-code">
+                <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>Select a class node to view its commit history</p>
+              </div>
+            ) : isLoadingHistory ? (
+              <div className="p-4 text-center">
+                <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#243B6B] mb-2" />
+                <p className="text-[#5B5F6B] font-mono-code text-xs">Loading commit history...</p>
+              </div>
+            ) : historyError ? (
+              <div className="p-4 bg-[#B5442C]/10 border border-[#B5442C]/30 rounded-xl text-center">
+                <AlertTriangle className="w-6 h-6 mx-auto text-[#B5442C] mb-2" />
+                <p className="text-[#B5442C] font-mono-code text-xs">{historyError}</p>
+              </div>
+            ) : commitHistory.length === 0 ? (
+              <div className="p-4 text-center text-[#5B5F6B] font-mono-code">
+                <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No commit history found for this class</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-[10px] font-mono-code text-[#5B5F6B] uppercase font-bold mb-2">
+                  {commitHistory.length} Commits Found
+                </div>
+                {commitHistory.map((commit, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-[#F8F7F4] hover:bg-[#F1F0EC] border border-[#E4E1D8] rounded-lg space-y-2 transition"
+                  >
+                    {/* Commit Hash */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <GitCommit className="w-3 h-3 text-[#243B6B]" />
+                        <span className="font-mono-code text-[10px] font-bold text-[#243B6B]">
+                          {commit.hash.slice(0, 7)}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-[#5B5F6B] font-mono-code">
+                        {new Date(commit.timestamp).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+
+                    {/* Commit Message */}
+                    <p className="text-[11px] text-[#171A21] font-mono-code line-clamp-2">
+                      {commit.message}
+                    </p>
+
+                    {/* Author */}
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#5B5F6B] font-mono-code">
+                      <User className="w-3 h-3" />
+                      <span>{commit.author}</span>
+                    </div>
+
+                    {/* File Path */}
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#5B5F6B] font-mono-code">
+                      <FileCode className="w-3 h-3" />
+                      <span className="truncate">{commit.file_path}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

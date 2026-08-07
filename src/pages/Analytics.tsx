@@ -1,8 +1,65 @@
-import { mockAnalytics } from '../mockData/graphData';
+import { useEffect, useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, PieChart, Pie } from 'recharts';
 import { Users, Flame, ShieldAlert, Cpu } from 'lucide-react';
+import { fetchChangeCoupling } from '../components/services/backendApi';
+
+interface CouplingCardItem {
+  name: string;
+  role: string;
+  primaryModule: string;
+  ownershipData: Array<{ value: number; color: string }>;
+  commits: number;
+}
 
 export const Analytics = () => {
+  const [couplingData, setCouplingData] = useState<any[]>([]);
+  const [isLoadingCouplings, setIsLoadingCouplings] = useState(true);
+
+  useEffect(() => {
+    const loadCouplings = async () => {
+      setIsLoadingCouplings(true);
+      try {
+        const response = await fetchChangeCoupling();
+        setCouplingData(response?.data ?? []);
+      } catch {
+        setCouplingData([]);
+      } finally {
+        setIsLoadingCouplings(false);
+      }
+    };
+
+    loadCouplings();
+  }, []);
+
+  const hotspotData = useMemo(() => {
+    return couplingData.slice(0, 8).map((item) => ({
+      name: `${item.file1.split('/').pop() || item.file1} ↔ ${item.file2.split('/').pop() || item.file2}`,
+      changes: Math.max(1, Math.round(item.confidence * 100)),
+    }));
+  }, [couplingData]);
+
+  const ownershipCards = useMemo(() => {
+    return couplingData.slice(0, 4).map((item) => {
+      const file1 = item.file1.split('/').pop() || item.file1;
+      const file2 = item.file2.split('/').pop() || item.file2;
+      return {
+        name: file1,
+        role: `Co-changed with ${file2}`,
+        primaryModule: item.file1.split('/')[0] || 'repo',
+        ownershipData: [
+          { value: item.count, color: '#243B6B' },
+          { value: Math.max(1, Math.round(item.confidence * 100)), color: '#06B6D4' },
+        ],
+        commits: item.count,
+      } satisfies CouplingCardItem;
+    });
+  }, [couplingData]);
+
+  const hotspotCount = useMemo(() => {
+    const uniqueFiles = new Set(couplingData.flatMap((item) => [item.file1, item.file2]));
+    return uniqueFiles.size;
+  }, [couplingData]);
+
   return (
     <div className="bg-[#F6F5F1] min-h-[calc(100vh-80px)] p-6 md:p-8 space-y-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -12,7 +69,7 @@ export const Analytics = () => {
           <div className="bg-white p-5 rounded-xl border border-[#E4E1D8] shadow-sm flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Fragile Files (Hotspots)</span>
-              <p className="text-2xl font-bold text-[#B5442C]">2 Files</p>
+              <p className="text-2xl font-bold text-[#B5442C]">{hotspotCount} Files</p>
             </div>
             <div className="p-3 bg-[#B5442C]/10 rounded-xl text-[#B5442C]">
               <Flame className="w-6 h-6" />
@@ -31,8 +88,8 @@ export const Analytics = () => {
 
           <div className="bg-white p-5 rounded-xl border border-[#E4E1D8] shadow-sm flex items-center justify-between">
             <div>
-              <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Analyzed Commits</span>
-              <p className="text-2xl font-bold text-[#243B6B]">240 Commits</p>
+              <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Co-change Pairs</span>
+              <p className="text-2xl font-bold text-[#243B6B]">{couplingData.length} Pairs</p>
             </div>
             <div className="p-3 bg-[#243B6B]/10 rounded-xl text-[#243B6B]">
               <Cpu className="w-6 h-6" />
@@ -62,7 +119,7 @@ export const Analytics = () => {
 
             <div className="h-72 pt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockAnalytics.hotspots}>
+                <BarChart data={hotspotData}>
                   <XAxis dataKey="name" stroke="#5B5F6B" fontSize={11} tickLine={false} />
                   <YAxis stroke="#5B5F6B" fontSize={11} tickLine={false} />
                   <Tooltip
@@ -76,7 +133,7 @@ export const Analytics = () => {
                     label={{ value: 'HOTSPOT THRESHOLD', fill: '#B5442C', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                   />
                   <Bar dataKey="changes" radius={[6, 6, 0, 0]}>
-                    {mockAnalytics.hotspots.map((entry, index) => (
+                    {hotspotData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.changes >= 30 ? '#B5442C' : '#243B6B'} />
                     ))}
                   </Bar>
@@ -93,7 +150,11 @@ export const Analytics = () => {
             </h3>
 
             <div className="space-y-4">
-              {mockAnalytics.developerExpertise.map((dev, idx) => (
+              {isLoadingCouplings ? (
+                <div className="p-4 text-sm text-[#5B5F6B] font-mono-code">Loading change-coupling data…</div>
+              ) : ownershipCards.length === 0 ? (
+                <div className="p-4 text-sm text-[#5B5F6B] font-mono-code">No change-coupling data available yet.</div>
+              ) : ownershipCards.map((dev, idx) => (
                 <div key={idx} className="p-4 bg-[#F8F7F4] border border-[#E4E1D8] rounded-xl flex items-center justify-between gap-4">
                   <div className="flex-1 space-y-1">
                     <h4 className="text-sm font-bold text-[#171A21]">{dev.name}</h4>

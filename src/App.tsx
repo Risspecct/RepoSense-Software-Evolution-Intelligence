@@ -10,7 +10,6 @@ import {
   indexBackendRepository,
   fetchClassSubgraph 
 } from './components/services/backendApi';
-import { fetchGitHubRepoData } from './components/services/githubApi';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('graph');
