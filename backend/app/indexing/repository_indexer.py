@@ -13,6 +13,7 @@ from app.parsers.parser_factory import ParserFactory
 from app.graph.query.graph_query_service import GraphQueryService
 from app.intelligence.gemini_client import GeminiClient
 from app.intelligence.summary_service import SummaryService
+from app.intelligence.commit_analysis_service import CommitAnalysisService
 
 class RepositoryIndexer:
     """
@@ -39,26 +40,30 @@ class RepositoryIndexer:
             graph_query_service=self.graph_query_service,
             gemini_client=self.gemini_client,
         )
+        self.commit_analysis_service = CommitAnalysisService(
+            graph_query_service=self.graph_query_service,
+            gemini_client=self.gemini_client,
+            summary_service=self.summary_service,
+        )
 
         self.commit_extractor = GitHistoryExtractor()
         self.commit_builder = CommitGraphBuilder()
 
-    def index(
+    def _build_structural_graph(
         self,
         repository_path: Path,
-    ) -> None:
+    ) -> GraphDocument:
         """
-        Index an entire repository into Neo4j.
+        Parse the repository's current source state and build
+        the structural Class/Method/File graph.
         """
 
         graph = GraphDocument()
-
         analyses = []
 
         files = self.scanner.scan(repository_path)
 
         for file in files:
-
             if file.suffix != ".java":
                 continue
 
@@ -85,7 +90,10 @@ class RepositoryIndexer:
                 tree,
                 source_code,
             )
-            analysis.file_path = file.relative_to(repository_path).as_posix()
+
+            analysis.file_path = (
+                file.relative_to(repository_path).as_posix()
+            )
 
             analyses.append(analysis)
 
@@ -93,12 +101,7 @@ class RepositoryIndexer:
             analyses,
         )
 
-        # ----------------------------------
-        # Build structural graph
-        # ----------------------------------
-
         for analysis in analyses:
-
             file_graph = self.builder.build(
                 analysis,
                 symbol_index=symbol_index,
@@ -106,33 +109,110 @@ class RepositoryIndexer:
 
             graph.merge(file_graph)
 
-        # ----------------------------------
-        # Build commit graph
-        # ----------------------------------
+        return graph
+    
+    def update(
+        self,
+        repository_path: Path,
+        commits: list,
+    ) -> None:
+        """
+        Process newly introduced commits for an already indexed repository.
 
-        commits = self.commit_extractor.extract(
-            repository_path,
-        )
+        For each new commit:
+        1. Persist its Commit node and MODIFIED relationships.
+        2. Analyze its intent and semantic significance.
+        3. Update significant Method summaries.
+        4. Regenerate affected Class summaries.
 
+        After commit intelligence has been processed, refresh the current
+        structural graph from the repository's latest source state.
+        """
+
+        if not commits:
+            return
+
+        # Build graph containing only the newly introduced commits.
         commit_graph = self.commit_builder.build(
             commits,
         )
 
-        graph.merge(commit_graph)
-
-        # ----------------------------------
-        # Persist graph
-        # ----------------------------------
-
         self.client.connect()
 
         try:
-            self.writer.write(graph)
-            self.summary_service.summarize_repository()
-            
+            # Persist new Commit nodes before AI analysis so intent can
+            # be written back to those nodes.
+            self.writer.write(commit_graph)
+
+            for commit in commits:
+                self.commit_analysis_service.analyze_commit(
+                    commit,
+                )
+
         finally:
             self.client.close()
+    def _build_structural_graph(
+        self,
+        repository_path: Path,
+    ) -> GraphDocument:
+        """
+        Parse the repository's current source state and build
+        the structural Class/Method/File graph.
+        """
 
+        graph = GraphDocument()
+        analyses = []
+
+        files = self.scanner.scan(repository_path)
+
+        for file in files:
+            if file.suffix != ".java":
+                continue
+
+            source_file = SourceFile(
+                path=file.as_posix(),
+                language=ProgrammingLanguage.JAVA,
+                size=file.stat().st_size,
+            )
+
+            parser = self.parser_factory.get_parser(
+                source_file.language,
+            )
+
+            tree = parser.parse(source_file)
+
+            with open(source_file.path, "rb") as source:
+                source_code = source.read()
+
+            analyzer = self.analyzer_factory.get_analyzer(
+                source_file.language,
+            )
+
+            analysis = analyzer.analyze(
+                tree,
+                source_code,
+            )
+
+            analysis.file_path = (
+                file.relative_to(repository_path).as_posix()
+            )
+
+            analyses.append(analysis)
+
+        symbol_index = self._build_symbol_index(
+            analyses,
+        )
+
+        for analysis in analyses:
+            file_graph = self.builder.build(
+                analysis,
+                symbol_index=symbol_index,
+            )
+
+            graph.merge(file_graph)
+
+        return graph        
+    
     def _build_symbol_index(
         self,
         analyses: list,

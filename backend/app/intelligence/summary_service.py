@@ -84,6 +84,45 @@ class SummaryService:
 
         for batch in self._create_batches(contexts):
             self._summarize_class_batch(batch)
+  
+    def generate_class_summary(
+      self,
+        context: dict,
+    ) -> str:
+        """
+        Generate a summary for a single Class.
+
+        Used when a Class must be refreshed after a significant
+        Method change.
+        """
+        result = self.gemini_client.generate_structured(
+            prompt=self._build_class_batch_prompt([context]),
+            response_model=BatchSummaryResult,
+        )
+
+        if len(result.summaries) != 1:
+            raise RuntimeError(
+                "Gemini did not return exactly one Class summary."
+            )
+
+        item = result.summaries[0]
+        expected_id = context["class"]["id"]
+
+        if item.node_id != expected_id:
+            raise RuntimeError(
+                "Gemini returned an unexpected Class node ID: "
+                f"'{item.node_id}'."
+            )
+
+        summary = item.summary.strip()
+
+        if not summary:
+            raise RuntimeError(
+                f"Gemini returned an empty summary for "
+                f"Class '{expected_id}'."
+            )
+
+        return summary
 
     def _summarize_method_batch(
         self,

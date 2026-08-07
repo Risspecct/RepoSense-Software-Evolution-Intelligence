@@ -51,6 +51,60 @@ class RepositoryManager:
             local_path=repository_path.as_posix(),
         )
 
+    def update(
+        self,
+        repository_url: str,
+    ) -> tuple[RepositoryInfo, str | None, str]:
+        """
+        Update an existing repository and return the Git state
+        before and after the pull.
+
+        Returns:
+            repository_info
+            old_head
+            new_head
+
+        old_head is None when the repository did not previously exist.
+        """
+
+        owner, repository_name = self._extract_repository_info(
+            repository_url,
+        )
+
+        repository_path = self._get_repository_path(
+            repository_name,
+        )
+
+        old_head: str | None = None
+
+        if repository_path.exists():
+            repo = Repo(repository_path)
+            old_head = repo.head.commit.hexsha
+
+            self._pull(repository_path)
+
+        else:
+            self._clone(
+                repository_url,
+                repository_path,
+            )
+
+        repo = Repo(repository_path)
+        new_head = repo.head.commit.hexsha
+
+        repository_info = RepositoryInfo(
+            name=repository_name,
+            owner=owner,
+            branch=repo.active_branch.name,
+            local_path=repository_path.as_posix(),
+        )
+
+        return (
+            repository_info,
+            old_head,
+            new_head,
+        )
+    
     def _extract_repository_info(
         self,
         repository_url: str,

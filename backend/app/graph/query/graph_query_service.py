@@ -13,7 +13,9 @@ from app.graph.query.cypher_queries import (
     GET_METHOD_CONTEXT,
     GET_CLASS_SUMMARY_CONTEXT,
     UPDATE_METHOD_SUMMARY,
-    UPDATE_CLASS_SUMMARY,    
+    UPDATE_CLASS_SUMMARY,
+    GET_FILE_CODE_NODES,
+    UPDATE_COMMIT_INTENT,    
 )
 
 
@@ -281,3 +283,51 @@ class GraphQueryService:
             "extends": [],
             "implements": [],
         }
+        
+    def get_file_code_nodes(
+        self,
+        file_path: str,
+    ) -> dict | None:
+        """
+        Return the Class and Method nodes contained in a source file.
+
+        Used during commit analysis to determine the candidate nodes
+        that may have been affected by a file diff.
+        """
+
+        rows = self.client.execute_query(
+            GET_FILE_CODE_NODES,
+            {"file_path": file_path},
+        )
+
+        if not rows:
+            return None
+
+        row = rows[0]
+
+        return {
+            "class": row["class"],
+            "methods": [
+                method
+                for method in row["methods"]
+                if method is not None
+            ],
+        }
+        
+    def update_commit_intent(
+        self,
+        commit_hash: str,
+        intent: str,
+    ) -> bool:
+        """
+        Update the AI-generated intent stored on a Commit node.
+        """
+        rows = self.client.execute_query(
+            UPDATE_COMMIT_INTENT,
+            {
+                "commit_hash": commit_hash,
+                "intent": intent,
+            },
+        )
+
+        return bool(rows)        

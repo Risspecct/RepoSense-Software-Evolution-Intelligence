@@ -261,3 +261,44 @@ RETURN
     }
 ] AS relationships
 """
+
+GET_FILE_CODE_NODES = """
+MATCH (f:File {path: $file_path})-[:CONTAINS]->(c:Class)
+
+OPTIONAL MATCH (c)-[:DECLARES]->(m:Method)
+
+RETURN
+    {
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        modifiers: c.modifiers,
+        annotations: c.annotations,
+        extends: c.extends,
+        implements: c.implements,
+        summary: c.summary
+    } AS class,
+
+    collect(
+        DISTINCT CASE
+            WHEN m IS NULL THEN NULL
+            ELSE {
+                id: m.id,
+                name: m.name,
+                modifiers: m.modifiers,
+                annotations: m.annotations,
+                is_constructor: m.is_constructor,
+                parameter_names: m.parameter_names,
+                parameter_types: m.parameter_types,
+                return_type: m.return_type,
+                summary: m.summary
+            }
+        END
+    ) AS methods
+"""
+
+UPDATE_COMMIT_INTENT = """
+MATCH (c:Commit {hash: $commit_hash})
+SET c.intent = $intent
+RETURN c.hash AS commit_hash
+"""

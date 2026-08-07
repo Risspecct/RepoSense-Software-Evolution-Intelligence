@@ -103,3 +103,30 @@ class GitHistoryExtractor:
             "utf-8",
             errors="replace",
         )
+    def extract_between(
+      self,
+        repository_path: Path,
+        old_head: str,
+        new_head: str = "HEAD",
+    ) -> list[CommitInfo]:
+        """
+        Extract commits introduced between two Git revisions.
+
+        Commits are returned oldest-first so incremental analysis
+        follows chronological order.
+        """
+
+        repo = Repo(repository_path)
+
+        commits = list(
+            repo.iter_commits(
+                f"{old_head}..{new_head}",
+            )
+        )
+
+        commits.reverse()
+
+        return [
+            self._build_commit_info(commit)
+            for commit in commits
+        ]
