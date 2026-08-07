@@ -1,40 +1,23 @@
 import { Route, Palette, Compass } from 'lucide-react';
 
 interface GraphHeaderBarProps {
-  viewMode: 'domain' | 'structural';
-  setViewMode: (v: 'domain' | 'structural') => void;
   onOpenPathModal: () => void;
   onOpenThemeModal: () => void;
   onStartTour: () => void;
 }
 
 export const GraphHeaderBar = ({
-  viewMode,
-  setViewMode,
   onOpenPathModal,
   onOpenThemeModal,
   onStartTour,
 }: GraphHeaderBarProps) => {
   return (
-    <div className="absolute top-4 left-4 right-4 z-40 flex flex-wrap items-center justify-between gap-3 bg-white/90 backdrop-blur-md p-2 rounded-xl border border-[#E4E1D8] shadow-md text-xs font-mono-code">
-      {/* View Mode Toggle */}
-      <div className="flex items-center gap-1 bg-[#F1F0EC] p-1 rounded-lg">
-        <button
-          onClick={() => setViewMode('domain')}
-          className={`px-3 py-1 rounded-md font-bold transition cursor-pointer ${
-            viewMode === 'domain' ? 'bg-[#243B6B] text-white' : 'text-[#5B5F6B] hover:text-[#171A21]'
-          }`}
-        >
-          Domain View
-        </button>
-        <button
-          onClick={() => setViewMode('structural')}
-          className={`px-3 py-1 rounded-md font-bold transition cursor-pointer ${
-            viewMode === 'structural' ? 'bg-[#243B6B] text-white' : 'text-[#5B5F6B] hover:text-[#171A21]'
-          }`}
-        >
+    <div className="absolute top-4 left-4 right-4 z-40 flex flex-wrap items-center justify-between gap-3 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-[#E4E1D8] shadow-md text-xs font-mono-code">
+      <div className="flex items-center gap-2">
+        <span className="px-3 py-1 rounded-full bg-[#243B6B] text-white text-[11px] font-bold tracking-[0.15em] uppercase">
           Structural View
-        </button>
+        </span>
+        <span className="text-[#475569] text-[11px]">Polished interactive graph mode</span>
       </div>
 
       {/* Feature Tools */}

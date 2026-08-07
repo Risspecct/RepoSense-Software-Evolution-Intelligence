@@ -1,8 +1,6 @@
 const BACKEND_URL = 'http://127.0.0.1:8000';
 
-// ---------------------------------------------------------------------------
-// TYPES (Strictly matching your OpenAPI Schemas)
-// ---------------------------------------------------------------------------
+
 export interface ClassResponse {
   id: string;
   name: string;
@@ -68,12 +66,21 @@ export async function checkBackendHealth(): Promise<{ status: string; neo4j: boo
   }
 }
 
+function normalizeRepositoryUrl(repoUrl: string): string {
+  const trimmed = repoUrl.trim();
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export async function connectBackendRepository(repoUrl: string) {
   try {
+    const normalizedUrl = normalizeRepositoryUrl(repoUrl);
     const response = await fetch(`${BACKEND_URL}/repositories/connect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: repoUrl }),
+      body: JSON.stringify({ url: normalizedUrl }),
     });
     if (!response.ok) throw new Error(`Connect error: ${response.statusText}`);
     return await response.json();
@@ -88,10 +95,11 @@ export async function connectBackendRepository(repoUrl: string) {
 // ---------------------------------------------------------------------------
 export async function indexBackendRepository(repoUrl: string): Promise<{ status: string; repository: string } | null> {
   try {
+    const normalizedUrl = normalizeRepositoryUrl(repoUrl);
     const indexResponse = await fetch(`${BACKEND_URL}/repositories/index`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repository_url: repoUrl }),
+      body: JSON.stringify({ repository_url: normalizedUrl }),
     });
 
     if (!indexResponse.ok) {
@@ -103,6 +111,11 @@ export async function indexBackendRepository(repoUrl: string): Promise<{ status:
     const data = await indexResponse.json();
     return data;
   } catch (error) {
+    if (error instanceof TypeError) {
+      console.error('Backend network failure:', error);
+      return null;
+    }
+
     console.error('Failed to index repository:', error);
     throw error;
   }

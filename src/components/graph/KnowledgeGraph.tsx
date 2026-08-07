@@ -27,7 +27,6 @@ interface KnowledgeGraphProps {
 
 export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGraphProps) => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'domain' | 'structural'>('structural');
   const [theme, setTheme] = useState<ThemeConfig>(themes[0]);
   const [font, setFont] = useState('sans');
   
@@ -48,43 +47,8 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
     [setEdges]
   );
 
-  // Domain View Nodes Generator
-  const domainNodes = [
-    {
-      id: 'domain-root',
-      type: 'customNode',
-      data: { label: nodes[0]?.data?.label || 'Repository Core', category: 'repo', subtext: 'Root Architecture' },
-      position: { x: 350, y: 30 },
-    },
-    {
-      id: 'domain-auth',
-      type: 'customNode',
-      data: { label: 'Auth & Security Service', category: 'module', subtext: 'JWT & Token Verification' },
-      position: { x: 150, y: 160 },
-    },
-    {
-      id: 'domain-payments',
-      type: 'customNode',
-      data: { label: 'Payment Gateway', category: 'module', subtext: 'Stripe & Order Processing' },
-      position: { x: 550, y: 160 },
-    },
-    {
-      id: 'domain-infra',
-      type: 'customNode',
-      data: { label: 'Database & Redis Cache', category: 'file', risk: 'high', subtext: 'Shared Persistence Layer' },
-      position: { x: 350, y: 300 },
-    },
-  ];
-
-  const domainEdges = [
-    { id: 'e-d1', source: 'domain-root', target: 'domain-auth', animated: true, style: { stroke: '#243B6B', strokeWidth: 2 } },
-    { id: 'e-d2', source: 'domain-root', target: 'domain-payments', animated: true, style: { stroke: '#243B6B', strokeWidth: 2 } },
-    { id: 'e-d3', source: 'domain-auth', target: 'domain-infra', label: 'DEPENDS', style: { stroke: '#B5442C', strokeWidth: 2 } },
-    { id: 'e-d4', source: 'domain-payments', target: 'domain-infra', label: 'DEPENDS', style: { stroke: '#B5442C', strokeWidth: 2 } },
-  ];
-
-  const activeNodes = viewMode === 'domain' ? domainNodes : nodes;
-  const activeEdges = viewMode === 'domain' ? domainEdges : edges;
+  const activeNodes = nodes;
+  const activeEdges = edges;
 
   // 1. WORKING DEPENDENCY PATH FINDER
   const handleFindPath = (fromId: string, toId: string) => {
@@ -135,8 +99,6 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
     >
       {/* Header Controls Bar */}
       <GraphHeaderBar
-        viewMode={viewMode}
-        setViewMode={setViewMode}
         onOpenPathModal={() => setIsPathOpen(true)}
         onOpenThemeModal={() => setIsThemeOpen(!isThemeOpen)}
         onStartTour={handleStartTour}
@@ -178,9 +140,7 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
       </ReactFlow>
 
       {/* Scrubber Controls */}
-      {viewMode === 'structural' && (
-        <EvolutionPlayback onStepChange={handleStepChange} maxSteps={5} />
-      )}
+      <EvolutionPlayback onStepChange={handleStepChange} maxSteps={5} />
 
       {/* Right Collapsible Panel (INFO / FILES) */}
       <div className="absolute top-20 right-4 w-80 bg-white/95 border border-[#E4E1D8] rounded-2xl shadow-xl p-4 text-[#171A21] z-40 space-y-3 backdrop-blur-md">

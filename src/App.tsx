@@ -75,22 +75,14 @@ export function App() {
     } catch (err) {
       console.error('Backend indexing failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(`Backend indexing failed: ${errorMessage}. Falling back to GitHub visualization.`);
 
-      // Fallback to GitHub API visualizer
-      try {
-        const fallbackData = await fetchGitHubRepoData(url);
-        if (fallbackData) {
-          setNodes(fallbackData.nodes);
-          setEdges(fallbackData.edges);
-          setActiveTab('graph');
-        }
-      } catch (githubErr) {
-        console.error('GitHub fallback also failed:', githubErr);
-        setError('Both backend and GitHub fallback failed. Please check the repository URL.');
-      } finally {
-        setIsLoading(false);
+      if (errorMessage.includes('Backend network failure') || errorMessage.includes('Failed to fetch')) {
+        setError('Backend service unavailable. Please check the backend server or network connection.');
+      } else {
+        setError(`Backend indexing failed: ${errorMessage}`);
       }
+
+      setIsLoading(false);
     }
   };
 
