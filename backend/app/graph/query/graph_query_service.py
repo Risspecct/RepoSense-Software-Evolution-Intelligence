@@ -4,6 +4,7 @@ from app.graph.query.cypher_queries import (
     FIND_CLASS_BY_ID,
     FIND_METHOD,
     GET_CLASS_FIELDS,
+    GET_CLASS_HISTORY,
     GET_CLASS_METHODS,
     GET_DEPENDENCIES,
     GET_DEPENDENTS,
@@ -71,6 +72,27 @@ class GraphQueryService:
 
         return [
             row["field"]
+            for row in rows
+        ]
+
+    def get_class_history(
+        self,
+        class_id: str,
+    ) -> list[dict]:
+        rows = self.client.execute_query(
+            GET_CLASS_HISTORY,
+            {"class_id": class_id},
+        )
+
+        return [
+            {
+                "hash": row["hash"],
+                "message": row["message"],
+                "author": row["author"],
+                "email": row["email"],
+                "timestamp": row["timestamp"],
+                "file_path": row["file_path"],
+            }
             for row in rows
         ]
 

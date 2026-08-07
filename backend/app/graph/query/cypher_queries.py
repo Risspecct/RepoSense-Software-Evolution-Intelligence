@@ -70,6 +70,18 @@ RETURN c.id AS class_id
 LIMIT 1
 """
 
+GET_CLASS_HISTORY = """
+MATCH (c:Class {id: $class_id})<-[:CONTAINS]-(f:File)<-[:MODIFIED]-(commit:Commit)
+RETURN
+    commit.hash AS hash,
+    commit.message AS message,
+    commit.author AS author,
+    commit.email AS email,
+    commit.timestamp AS timestamp,
+    f.path AS file_path
+ORDER BY commit.timestamp DESC
+"""
+
 FIND_METHOD = f"""
 MATCH (m:Method {{name: $name}})
 RETURN {METHOD_PROJECTION} AS method

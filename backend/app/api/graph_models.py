@@ -35,6 +35,20 @@ class FieldResponse(BaseModel):
     initializer: str | None = None
 
 
+class CommitHistoryItem(BaseModel):
+    hash: str
+    message: str
+    author: str
+    email: str
+    timestamp: str
+    file_path: str
+
+
+class ClassHistoryResponse(BaseModel):
+    class_id: str
+    history: list[CommitHistoryItem] = Field(default_factory=list)
+
+
 class DependencyGroupResponse(BaseModel):
     imports: list[ClassResponse] = Field(default_factory=list)
     extends: list[ClassResponse] = Field(default_factory=list)

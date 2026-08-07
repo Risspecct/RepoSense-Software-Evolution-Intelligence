@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.analysis.models.analysis_result import AnalysisResult
 from app.graph.models.graph_document import GraphDocument
 from app.graph.models.graph_node import GraphNode
@@ -38,6 +40,20 @@ class GraphBuilder:
         symbol_index = symbol_index or {}
         class_nodes: dict[str, str] = {}
 
+        if analysis.file_path is None:
+            raise ValueError(
+                "AnalysisResult must contain a file_path before building a graph."
+            )
+
+        #
+        # File
+        #
+        file_node = self._build_file(
+            analysis.file_path,
+        )
+
+        graph.nodes.append(file_node)
+
         #
         # Package
         #
@@ -63,6 +79,14 @@ class GraphBuilder:
             graph.relationships.append(
                 GraphRelationship(
                     source=package_node.id,
+                    target=class_node.id,
+                    type=RelationshipType.CONTAINS,
+                )
+            )
+
+            graph.relationships.append(
+                GraphRelationship(
+                    source=file_node.id,
                     target=class_node.id,
                     type=RelationshipType.CONTAINS,
                 )
@@ -130,6 +154,23 @@ class GraphBuilder:
             label=NodeLabel.PACKAGE,
             properties={
                 "name": package_name,
+            },
+        )
+
+    def _build_file(
+        self,
+        file_path: str,
+    ) -> GraphNode:
+        """
+        Creates a file node.
+        """
+
+        return GraphNode(
+            id=f"file:{file_path}",
+            label=NodeLabel.FILE,
+            properties={
+                "path": file_path,
+                "name": Path(file_path).name,
             },
         )
 
@@ -305,7 +346,7 @@ class GraphBuilder:
     def _resolve_symbol(
         self,
         raw_symbol: str,
-        package_name: str,
+        package_name: str | None,
         imports: list[str],
         symbol_index: dict[str, str],
     ) -> str | None:
@@ -337,12 +378,13 @@ class GraphBuilder:
             if target_id is not None:
                 return target_id
 
-        local_target = symbol_index.get(
-            f"{package_name}.{symbol}"
-        )
+        if package_name is not None:
+            local_target = symbol_index.get(
+                f"{package_name}.{symbol}"
+            )
 
-        if local_target is not None:
-            return local_target
+            if local_target is not None:
+                return local_target
 
         return None
 
