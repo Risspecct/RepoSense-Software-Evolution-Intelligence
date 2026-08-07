@@ -12,8 +12,8 @@ import { CustomNode } from './CustomNode';
 import { GraphHeaderBar } from './GraphHeaderBar';
 import { ThemeModal, themes, type ThemeConfig } from './ThemeModal';
 import { PathFinderModal } from './PathFinderModal';
-import { X, Sparkles, AlertTriangle, FileCode, History, GitCommit, User, Loader2 } from 'lucide-react';
-import { fetchClassHistory } from '../services/backendApi';
+import { X, Sparkles, AlertTriangle, FileCode, History, GitCommit, User, Loader2, Boxes, Braces } from 'lucide-react';
+import { fetchClassFields, fetchClassHistory, fetchClassMethods } from '../services/backendApi';
 
 const nodeTypes = { customNode: CustomNode };
 
@@ -33,8 +33,12 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
   const [isPathOpen, setIsPathOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'files' | 'history'>('info');
   const [commitHistory, setCommitHistory] = useState<any[]>([]);
+  const [classMethods, setClassMethods] = useState<any[]>([]);
+  const [classFields, setClassFields] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
 
   const onNodesChange = useCallback(
     (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -64,12 +68,39 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
     );
   };
 
-  // Load commit history when HISTORY tab is activated and a class node is selected
+  useEffect(() => {
+    if (selectedNode && selectedNode.data.category === 'class') {
+      loadClassDetails(selectedNode.id);
+    }
+  }, [selectedNode]);
+
   useEffect(() => {
     if (activeTab === 'history' && selectedNode && selectedNode.data.category === 'class') {
       loadCommitHistory(selectedNode.id);
     }
   }, [activeTab, selectedNode]);
+
+  const loadClassDetails = async (classId: string) => {
+    setIsLoadingDetails(true);
+    setDetailsError(null);
+    setClassMethods([]);
+    setClassFields([]);
+
+    try {
+      const [methodsData, fieldsData] = await Promise.all([
+        fetchClassMethods(classId),
+        fetchClassFields(classId),
+      ]);
+
+      setClassMethods(methodsData ?? []);
+      setClassFields(fieldsData ?? []);
+    } catch (err) {
+      console.error('Failed to load class details:', err);
+      setDetailsError('Failed to load class details');
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   const loadCommitHistory = async (classId: string) => {
     setIsLoadingHistory(true);
@@ -285,7 +316,7 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
 
       {/* Floating Node Context Drawer */}
       {selectedNode && (
-        <div className="absolute top-20 right-90 w-80 bg-white border border-[#E4E1D8] rounded-2xl p-5 shadow-2xl text-[#171A21] z-50">
+        <div className="absolute top-20 right-90 w-72 max-h-[78vh] overflow-y-auto bg-white border border-[#E4E1D8] rounded-2xl p-4 shadow-2xl text-[#171A21] z-50">
           <div className="flex justify-between items-center pb-3 border-b border-[#E4E1D8]">
             <span className="text-[10px] font-mono-code uppercase font-bold text-[#243B6B] tracking-wider">
               {selectedNode.data.category} Entity Context
@@ -307,6 +338,84 @@ export const KnowledgeGraph = ({ nodes, edges, setNodes, setEdges }: KnowledgeGr
             {selectedNode.data.author && (
               <div className="text-xs text-[#243B6B] font-mono-code">
                 Author: <strong className="text-[#171A21]">{selectedNode.data.author}</strong>
+              </div>
+            )}
+
+            {selectedNode.data.category === 'class' && (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-[#E4E1D8] bg-[#F8F7F4] p-3">
+                  <div className="mb-2 flex items-center gap-2 text-[11px] font-bold font-mono-code uppercase text-[#243B6B]">
+                    <Boxes className="w-3.5 h-3.5" />
+                    <span>File / Class Info</span>
+                  </div>
+                  {isLoadingDetails ? (
+                    <p className="text-[11px] text-[#5B5F6B] font-mono-code">Loading class details…</p>
+                  ) : detailsError ? (
+                    <p className="text-[11px] text-[#B5442C] font-mono-code">{detailsError}</p>
+                  ) : (
+                    <div className="space-y-2 text-[11px] font-mono-code text-[#171A21]">
+                      <div className="flex justify-between gap-2">
+                        <span className="text-[#5B5F6B]">Name</span>
+                        <strong className="text-right">{selectedNode.data.label}</strong>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-[#5B5F6B]">Type</span>
+                        <strong className="text-right">{selectedNode.data.rawProperties?.type || 'class'}</strong>
+                      </div>
+                      {selectedNode.data.rawProperties?.package && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-[#5B5F6B]">Package</span>
+                          <strong className="text-right">{selectedNode.data.rawProperties.package}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-[#E4E1D8] bg-white p-3">
+                  <div className="mb-2 flex items-center gap-2 text-[11px] font-bold font-mono-code uppercase text-[#243B6B]">
+                    <Braces className="w-3.5 h-3.5" />
+                    <span>Methods</span>
+                  </div>
+                  {isLoadingDetails ? (
+                    <p className="text-[11px] text-[#5B5F6B] font-mono-code">Loading methods…</p>
+                  ) : classMethods.length === 0 ? (
+                    <p className="text-[11px] text-[#5B5F6B] font-mono-code">No methods found for this class.</p>
+                  ) : (
+                    <ul className="space-y-1.5 text-[11px] font-mono-code text-[#171A21]">
+                      {classMethods.slice(0, 8).map((method) => (
+                        <li key={method.id} className="rounded-lg border border-[#E4E1D8] bg-[#F8F7F4] px-2 py-1.5">
+                          <div className="font-bold">{method.name}</div>
+                          <div className="text-[10px] text-[#5B5F6B]">
+                            {method.return_type || 'void'}
+                            {method.parameter_types?.length ? ` (${method.parameter_types.join(', ')})` : ''}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-[#E4E1D8] bg-white p-3">
+                  <div className="mb-2 flex items-center gap-2 text-[11px] font-bold font-mono-code uppercase text-[#243B6B]">
+                    <FileCode className="w-3.5 h-3.5" />
+                    <span>Fields</span>
+                  </div>
+                  {isLoadingDetails ? (
+                    <p className="text-[11px] text-[#5B5F6B] font-mono-code">Loading fields…</p>
+                  ) : classFields.length === 0 ? (
+                    <p className="text-[11px] text-[#5B5F6B] font-mono-code">No fields found for this class.</p>
+                  ) : (
+                    <ul className="space-y-1.5 text-[11px] font-mono-code text-[#171A21]">
+                      {classFields.slice(0, 8).map((field) => (
+                        <li key={field.id} className="rounded-lg border border-[#E4E1D8] bg-[#F8F7F4] px-2 py-1.5">
+                          <div className="font-bold">{field.name}</div>
+                          <div className="text-[10px] text-[#5B5F6B]">{field.type}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             )}
 
