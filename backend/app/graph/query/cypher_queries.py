@@ -78,7 +78,8 @@ RETURN
     commit.author AS author,
     commit.email AS email,
     commit.timestamp AS timestamp,
-    f.path AS file_path
+    f.path AS file_path,
+    commit.intent AS intent
 ORDER BY commit.timestamp DESC
 """
 

@@ -223,6 +223,7 @@ class GraphQueryService:
                 "email": row["email"],
                 "timestamp": row["timestamp"],
                 "file_path": row["file_path"],
+                "intent": row["intent"],
             }
             for row in rows
         ]
@@ -283,16 +284,16 @@ class GraphQueryService:
             "extends": [],
             "implements": [],
         }
-        
+    
     def get_file_code_nodes(
         self,
         file_path: str,
-    ) -> dict | None:
+    ) -> list[dict]:
         """
-        Return the Class and Method nodes contained in a source file.
+        Return all Class and Method nodes contained in a source file.
 
-        Used during commit analysis to determine the candidate nodes
-        that may have been affected by a file diff.
+        A Java file may contain more than one Class, so every
+        matched Class context is returned.
         """
 
         rows = self.client.execute_query(
@@ -300,19 +301,17 @@ class GraphQueryService:
             {"file_path": file_path},
         )
 
-        if not rows:
-            return None
-
-        row = rows[0]
-
-        return {
-            "class": row["class"],
-            "methods": [
-                method
-                for method in row["methods"]
-                if method is not None
-            ],
-        }
+        return [
+            {
+                "class": row["class"],
+                "methods": [
+                    method
+                    for method in row["methods"]
+                    if method is not None
+                ],
+            }
+            for row in rows
+        ]        
         
     def update_commit_intent(
         self,

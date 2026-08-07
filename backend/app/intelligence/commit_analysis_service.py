@@ -145,26 +145,26 @@ class CommitAnalysisService:
             if not file_path.endswith(".java"):
                 continue
 
-            graph_context = (
+            graph_contexts = (
                 self.graph_query_service.get_file_code_nodes(
                     file_path,
                 )
             )
 
-            if graph_context is None:
+            if not graph_contexts:
                 continue
-
-            contexts.append(
-                {
-                    "file_path": file_path,
-                    "diff": commit.file_diffs.get(
-                        file_path,
-                        "",
-                    ),
-                    "class": graph_context["class"],
-                    "methods": graph_context["methods"],
-                }
-            )
+            for graph_context in graph_contexts:
+                contexts.append(
+                    {
+                        "file_path": file_path,
+                        "diff": commit.file_diffs.get(
+                            file_path,
+                            "",
+                        ),
+                        "class": graph_context["class"],
+                        "methods": graph_context["methods"],
+                    }
+                )
 
         return contexts
 
