@@ -177,17 +177,17 @@ class GraphBuilder:
             f"#{method.name}"
             f"({parameter_signature})"
         )
-
         properties = {
             "name": method.name,
             "modifiers": method.modifiers,
             "annotations": method.annotations,
             "is_constructor": method.is_constructor,
-            "parameters": [
-                {
-                    "name": parameter.name,
-                    "type": parameter.type,
-                }
+            "parameter_names": [
+                parameter.name
+                for parameter in method.parameters
+            ],
+            "parameter_types": [
+                parameter.type
                 for parameter in method.parameters
             ],
         }

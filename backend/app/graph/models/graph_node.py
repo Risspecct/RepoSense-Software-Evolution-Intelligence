@@ -1,14 +1,13 @@
 from pydantic import BaseModel, Field
-from typing import Any
+from app.graph.constants import NodeLabel
+from typing import TypeAlias
+
+PropertyValue: TypeAlias = (
+    str | int | float | bool | list[str] | list[str] | None
+)
 
 
 class GraphNode(BaseModel):
-    """
-    Represents a node in the repository graph.
-    """
-
     id: str
-
-    label: str
-
-    properties: dict[str, Any] = Field(default_factory=dict)
+    label: NodeLabel
+    properties: dict[str, PropertyValue] = Field(default_factory=dict)
