@@ -10,3 +10,4 @@ class AnalysisResult(BaseModel):
     package: str | None = None
     imports: list[str] = Field(default_factory=list)
     classes: list[ClassInfo] = Field(default_factory=list)
+    file_path: str | None = None

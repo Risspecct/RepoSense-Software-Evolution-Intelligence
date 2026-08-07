@@ -18,7 +18,6 @@ class CommitGraphBuilder:
         graph = GraphDocument()
 
         commit_nodes: dict[str, GraphNode] = {}
-        file_nodes: dict[str, GraphNode] = {}
         relationships: set[tuple[str, str, str]] = set()
 
         for commit in commits:
@@ -32,9 +31,6 @@ class CommitGraphBuilder:
 
                 file_id = f"file:{file_path}"
 
-                if file_id not in file_nodes:
-                    file_nodes[file_id] = self._build_file(file_path)
-
                 relationships.add(
                     (
                         commit_id,
@@ -44,7 +40,6 @@ class CommitGraphBuilder:
                 )
 
         graph.nodes.extend(commit_nodes.values())
-        graph.nodes.extend(file_nodes.values())
 
         graph.relationships.extend(
             GraphRelationship(

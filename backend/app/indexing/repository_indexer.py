@@ -75,6 +75,7 @@ class RepositoryIndexer:
                 tree,
                 source_code,
             )
+            analysis.file_path = file.relative_to(repository_path).as_posix()
 
             analyses.append(analysis)
 

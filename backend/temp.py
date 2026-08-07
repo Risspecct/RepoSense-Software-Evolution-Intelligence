@@ -13,9 +13,7 @@ indexer = RepositoryIndexer(
     neo4j_client,
 )
 
-indexer.index(
-    REPOSITORY,
-)
+indexer.index(REPOSITORY)
 
 print("\nRepository indexed successfully!")
 
@@ -23,65 +21,87 @@ neo4j_client.connect()
 
 try:
 
-    print("\n" + "=" * 60)
-    print("COMMIT NODES")
-    print("=" * 60)
+    print("\n" + "=" * 80)
+    print("GRAPH COUNTS")
+    print("=" * 80)
+
+    queries = {
+        "Packages": "MATCH (n:Package) RETURN count(n) AS count",
+        "Files": "MATCH (n:File) RETURN count(n) AS count",
+        "Classes": "MATCH (n:Class) RETURN count(n) AS count",
+        "Methods": "MATCH (n:Method) RETURN count(n) AS count",
+        "Fields": "MATCH (n:Field) RETURN count(n) AS count",
+        "Commits": "MATCH (n:Commit) RETURN count(n) AS count",
+        "MODIFIED": "MATCH ()-[r:MODIFIED]->() RETURN count(r) AS count",
+        "CONTAINS(File)": """
+            MATCH (:File)-[r:CONTAINS]->(:Class)
+            RETURN count(r) AS count
+        """,
+    }
+
+    for title, query in queries.items():
+        result = neo4j_client.execute_query(query)
+        print(f"{title:<20}: {result[0]['count']}")
+
+    print("\n")
+    print("=" * 80)
+    print("EVOLUTION GRAPH")
+    print("=" * 80)
 
     result = neo4j_client.execute_query(
         """
-        MATCH (c:Commit)
-        RETURN count(c) AS commits
-        """
-    )
+        MATCH (commit:Commit)
+              -[:MODIFIED]->
+              (file:File)
+              -[:CONTAINS]->
+              (class:Class)
 
-    print(f"Commit Nodes: {result[0]['commits']}")
-
-    print("\n" + "=" * 60)
-    print("FILE NODES")
-    print("=" * 60)
-
-    result = neo4j_client.execute_query(
-        """
-        MATCH (f:File)
-        RETURN count(f) AS files
-        """
-    )
-
-    print(f"File Nodes: {result[0]['files']}")
-
-    print("\n" + "=" * 60)
-    print("MODIFIED RELATIONSHIPS")
-    print("=" * 60)
-
-    result = neo4j_client.execute_query(
-        """
-        MATCH ()-[r:MODIFIED]->()
-        RETURN count(r) AS modified
-        """
-    )
-
-    print(f"MODIFIED Relationships: {result[0]['modified']}")
-
-    print("\n" + "=" * 60)
-    print("SAMPLE COMMITS")
-    print("=" * 60)
-
-    result = neo4j_client.execute_query(
-        """
-        MATCH (c:Commit)-[:MODIFIED]->(f:File)
         RETURN
-            c.hash AS hash,
-            c.message AS message,
-            f.path AS file
-        LIMIT 10
+            commit.message AS message,
+            file.name AS file,
+            class.name AS class
+
+        LIMIT 15
         """
     )
 
     for row in result:
-        print("-" * 60)
-        print(f"Commit : {row['hash'][:8]}")
-        print(f"Message: {row['message']}")
+        print("-" * 80)
+        print(f"Commit : {row['message']}")
         print(f"File   : {row['file']}")
+        print(f"Class  : {row['class']}")
+
+    print("\n")
+    print("=" * 80)
+    print("LATEST CHANGES TO A CLASS")
+    print("=" * 80)
+
+    result = neo4j_client.execute_query(
+        """
+        MATCH (class:Class)
+              <-[:CONTAINS]-
+              (file:File)
+              <-[:MODIFIED]-
+              (commit:Commit)
+
+        RETURN
+            class.name AS class,
+            commit.message AS message,
+            commit.author AS author,
+            commit.timestamp AS timestamp
+
+        ORDER BY timestamp DESC
+
+        LIMIT 15
+        """
+    )
+
+    for row in result:
+        print("-" * 80)
+        print(f"Class     : {row['class']}")
+        print(f"Commit    : {row['message']}")
+        print(f"Author    : {row['author']}")
+        print(f"Timestamp : {row['timestamp']}")
 
 finally:
     neo4j_client.close()
