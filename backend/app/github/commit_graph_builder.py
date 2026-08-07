@@ -70,14 +70,19 @@ class CommitGraphBuilder:
         commit: CommitInfo,
     ) -> GraphNode:
 
+        properties = {
+            "hash": commit.hash,
+            "author": commit.author,
+            "email": commit.email,
+            "message": commit.message,
+            "timestamp": commit.timestamp.isoformat(),
+        }
+
+        if commit.intent is not None:
+            properties["intent"] = commit.intent
+
         return GraphNode(
             id=f"commit:{commit.hash}",
             label=NodeLabel.COMMIT,
-            properties={
-                "hash": commit.hash,
-                "author": commit.author,
-                "email": commit.email,
-                "message": commit.message,
-                "timestamp": commit.timestamp.isoformat(),
-            },
+            properties=properties,
         )

@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str | None = None
 
     LOG_LEVEL: str = "INFO"
-
+    
+    GEMINI_API_KEY: str
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

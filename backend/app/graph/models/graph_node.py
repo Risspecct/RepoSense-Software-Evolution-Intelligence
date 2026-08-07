@@ -3,7 +3,7 @@ from app.graph.constants import NodeLabel
 from typing import TypeAlias
 
 PropertyValue: TypeAlias = (
-    str | int | float | bool | list[str] | list[str] | None
+    str | int | float | bool | list[str] | list[float] | None
 )
 
 

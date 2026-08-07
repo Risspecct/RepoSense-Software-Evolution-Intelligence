@@ -1,149 +1,97 @@
-from itertools import combinations
-
 import pandas as pd
-
+from itertools import combinations
+from collections import Counter
 from app.graph.neo4j_client import neo4j_client
 
-
-def calculate_change_coupling() -> list[dict]:
+def analyze_change_coupling(project_id: str, threshold: float = 0.4) -> list[dict]:
+    """
+    Identifies files that frequently change together in the same commits.
+    Uses Association Rule Mining (Confidence) to establish logical coupling.
+    """
     neo4j_client.connect()
 
-    # --------------------------------------------------
-    # 1. Fetch every commit with its modified files
-    # --------------------------------------------------
-
+    # 1. Fetch all commits and their files for this specific project
     query = """
-    MATCH (c:Commit)-[:MODIFIED]->(f:File)
-
-    RETURN
-        c.hash AS commit,
-        collect(f.path) AS files
+    MATCH (p:Project {id: $project_id})-[:CONTAINS]->(f:File)<-[:MODIFIED]-(c:Commit)
+    RETURN 
+        c.id AS commit_id, 
+        f.path AS file_path
     """
+    
+    data = neo4j_client.execute_query(query, {"project_id": project_id})
 
-    commits = neo4j_client.execute_query(query)
-
-    if not commits:
+    if not data:
         return []
 
-    # --------------------------------------------------
-    # 2. Fetch churn of every file
-    # --------------------------------------------------
+    # 2. Group files by commit and count individual file occurrences
+    commits = {}
+    file_counts = Counter()
+    
+    for row in data:
+        cid = row["commit_id"]
+        path = row["file_path"]
+        
+        if cid not in commits:
+            commits[cid] = []
+        commits[cid].append(path)
+        file_counts[path] += 1
 
-    churn_query = """
-    MATCH (f:File)
-
-    OPTIONAL MATCH (f)<-[:MODIFIED]-(c:Commit)
-
-    RETURN
-        f.path AS path,
-        count(c) AS churn
-    """
-
-    churn_data = neo4j_client.execute_query(churn_query)
-
-    churn_lookup = {
-        row["path"]: row["churn"]
-        for row in churn_data
-    }
-
-    # --------------------------------------------------
-    # 3. Count file pairs
-    # --------------------------------------------------
-
-    pair_counts = {}
-
-    for commit in commits:
-
-        files = sorted(set(commit["files"]))
-
-        if len(files) < 2:
+    # 3. Count co-occurrences (pairs) across all commits
+    pair_counts = Counter()
+    for cid, files in commits.items():
+        # Optimization: Ignore 'Giant Commits' (> 25 files) to avoid false noise
+        if len(files) > 25:
             continue
+        
+        # Sort files to ensure (FileA, FileB) is the same as (FileB, FileA)
+        for pair in combinations(sorted(files), 2):
+            pair_counts[pair] += 1
 
-        for pair in combinations(files, 2):
+    # 4. Calculate coupling strength (Confidence)
+    coupling_data = []
+    for (file_a, file_b), shared_count in pair_counts.items():
+        # Confidence A -> B: In what % of A's changes did B also change?
+        conf_a = shared_count / file_counts[file_a]
+        # Confidence B -> A: In what % of B's changes did A also change?
+        conf_b = shared_count / file_counts[file_b]
 
-            pair_counts[pair] = pair_counts.get(pair, 0) + 1
+        if conf_a >= threshold:
+            coupling_data.append({
+                "from_path": file_a, 
+                "to_path": file_b, 
+                "strength": float(conf_a)
+            })
+        if conf_b >= threshold:
+            coupling_data.append({
+                "from_path": file_b, 
+                "to_path": file_a, 
+                "strength": float(conf_b)
+            })
 
-    if not pair_counts:
-        return []
-
-    # --------------------------------------------------
-    # 4. Build dataframe
-    # --------------------------------------------------
-
-    rows = []
-
-    for (file1, file2), count in pair_counts.items():
-
-        churn1 = churn_lookup.get(file1, 0)
-        churn2 = churn_lookup.get(file2, 0)
-
-        denominator = min(churn1, churn2)
-
-        confidence = (
-            count / denominator
-            if denominator > 0
-            else 0.0
-        )
-
-        rows.append(
-            {
-                "file1": file1,
-                "file2": file2,
-                "count": int(count),
-                "confidence": float(confidence),
-            }
-        )
-
-    df = pd.DataFrame(rows)
-
-    # --------------------------------------------------
-    # 5. Write relationships back to Neo4j
-    # --------------------------------------------------
-
-    delete_query = """
-    MATCH ()-[r:CO_CHANGED_WITH]->()
-    DELETE r
-    """
-
-    neo4j_client.execute_query(delete_query)
-
-    relationship_data = df.to_dict("records")
-
+    # 5. Write logical coupling relationships back to the graph
+    # We use MERGE to avoid duplicate edges
     write_query = """
     UNWIND $data AS row
-
-    MATCH (a:File {path: row.file1})
-    MATCH (b:File {path: row.file2})
-
-    MERGE (a)-[r:CO_CHANGED_WITH]->(b)
-
-    SET
-        r.count = row.count,
-        r.confidence = row.confidence,
-        r.last_updated = datetime()
+    MATCH (p:Project {id: $project_id})
+    MATCH (p)-[:CONTAINS]->(a:File {path: row.from_path})
+    MATCH (p)-[:CONTAINS]->(b:File {path: row.to_path})
+    
+    MERGE (a)-[r:CO_CHANGES_WITH]->(b)
+    SET r.strength = row.strength
     """
 
     neo4j_client.execute_query(
-        write_query,
-        {"data": relationship_data},
+        write_query, 
+        {"project_id": project_id, "data": coupling_data}
     )
 
-    result = (
-        df.sort_values(
-            by=["confidence", "count"],
-            ascending=False,
-        )
-        .to_dict("records")
-    )
-
-    return result
-
+    return coupling_data
 
 if __name__ == "__main__":
-
-    couplings = calculate_change_coupling()
-
-    print(f"\nFound {len(couplings)} coupled file pairs\n")
-
-    for coupling in couplings[:20]:
-        print(coupling)
+    # Example usage
+    couplings = analyze_change_coupling(project_id="repomind-backend")
+    
+    print(f"Detected {len(couplings)} logical couplings\n")
+    
+    for link in couplings[:10]:
+        print(f"{link['from_path']} -> {link['to_path']} (Strength: {link['strength']:.2f})")
