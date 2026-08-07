@@ -1,5 +1,14 @@
 export async function fetchGitHubRepoData(repoUrl: string) {
-  // Default Fallback Nodes & Edges (Guarantee the graph NEVER disappears!)
+  type GraphEdge = {
+    id: string;
+    source: string;
+    target: string;
+    type: string;
+    style: { stroke: string; strokeWidth: number; strokeDasharray?: string };
+    label?: string;
+    labelStyle?: { fill: string; fontWeight: number; fontSize: number };
+  };
+
   const defaultFallback = {
     repoName: 'RepoSense / Core',
     nodes: [
@@ -130,17 +139,24 @@ export async function fetchGitHubRepoData(repoUrl: string) {
       }
     ];
 
-    const newEdges = commits.map((c: any, index: number) => ({
-      id: `e-commit-${index}`,
-      source: 'repo-root',
-      target: `commit-${c.sha.slice(0, 7)}`,
-      type: 'default',
-      style: {
+    const newEdges = commits.map((c: any, index: number) => {
+      const edgeStyle: { stroke: string; strokeWidth: number; strokeDasharray?: string } = {
         stroke: index === 0 ? '#B5442C' : '#243B6B',
         strokeWidth: 2,
-        strokeDasharray: index === 0 ? '4 4' : 'none',
-      },
-    }));
+      };
+
+      if (index === 0) {
+        edgeStyle.strokeDasharray = '4 4';
+      }
+
+      return {
+        id: `e-commit-${index}`,
+        source: 'repo-root',
+        target: `commit-${c.sha.slice(0, 7)}`,
+        type: 'default',
+        style: edgeStyle,
+      };
+    });
 
     if (commits.length > 0) {
       newEdges.push(

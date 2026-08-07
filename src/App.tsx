@@ -16,32 +16,39 @@ export function App() {
   const [edges, setEdges] = useState<any[]>([]);
   const [, setRepoName] = useState('Spring-Course-Management-System');
 
-  // Load initial graph on startup
+  // Load initial graph on startup using your teammate's compatible Java repo
   useEffect(() => {
     const initialUrl = 'https://github.com/Risspecct/Spring-Course-Management-System';
     handleIngestRepo(initialUrl);
   }, []);
 
   const handleIngestRepo = async (url: string) => {
-    // Step A: Tell backend to clone
-    await connectBackendRepository(url);
+    console.log(`🚀 Attempting backend ingestion for: ${url}`);
 
-    // Step B: Attempt to fetch real Neo4j indexed graph nodes from /repositories/index
-    const backendGraph = await fetchBackendGraphData(url);
-
-    if (backendGraph && backendGraph.nodes.length > 0) {
-      // 🎉 Using LIVE Neo4j Backend Data!
-      setNodes(backendGraph.nodes);
-      setEdges(backendGraph.edges);
-      setRepoName(backendGraph.repoName);
-    } else {
-      // Fallback if backend index endpoint is still compiling/empty
-      const fallbackData = await fetchGitHubRepoData(url);
-      if (fallbackData) {
-        setNodes(fallbackData.nodes);
-        setEdges(fallbackData.edges);
-        setRepoName(fallbackData.repoName);
+    try {
+      // 1. Send URL to backend /connect
+      const connectRes = await connectBackendRepository(url);
+      
+      if (connectRes) {
+        // 2. Fetch indexed graph from backend /index
+        const backendGraph = await fetchBackendGraphData(url);
+        if (backendGraph && backendGraph.nodes.length > 0) {
+          setNodes(backendGraph.nodes);
+          setEdges(backendGraph.edges);
+          setRepoName(backendGraph.repoName);
+          return;
+        }
       }
+    } catch (err) {
+      console.warn('Backend indexing skipped or offline, using fallback visualizer.');
+    }
+
+    // Fallback so canvas never breaks or stays blank
+    const fallbackData = await fetchGitHubRepoData(url);
+    if (fallbackData) {
+      setNodes(fallbackData.nodes);
+      setEdges(fallbackData.edges);
+      setRepoName(fallbackData.repoName);
     }
   };
 

@@ -1,6 +1,59 @@
 const BACKEND_URL = 'http://127.0.0.1:8000';
 
-// 1. Health check for Neo4j status
+// ---------------------------------------------------------------------------
+// TYPES (Strictly matching your OpenAPI Schemas)
+// ---------------------------------------------------------------------------
+export interface ClassResponse {
+  id: string;
+  name: string;
+  type: string;
+  modifiers: string[];
+  annotations: string[];
+  extends: string | null;
+  implements: string[];
+}
+
+export interface MethodResponse {
+  id: string;
+  name: string;
+  modifiers: string[];
+  annotations: string[];
+  is_constructor: boolean;
+  parameter_names: string[];
+  parameter_types: string[];
+  return_type: string | null;
+}
+
+export interface FieldResponse {
+  id: string;
+  name: string;
+  type: string;
+  modifiers: string[];
+  annotations: string[];
+  initializer: string | null;
+}
+
+export interface ClassHistoryResponse {
+  class_id: string;
+  history: {
+    hash: string;
+    message: string;
+    author: string;
+    email: string;
+    timestamp: string;
+    file_path: string;
+  }[];
+}
+
+export interface DependencyGroupResponse {
+  imports: ClassResponse[];
+  extends: ClassResponse[];
+  implements: ClassResponse[];
+}
+
+// ---------------------------------------------------------------------------
+// 1. Health & Ingestion
+// ---------------------------------------------------------------------------
 export async function checkBackendHealth(): Promise<{ status: string; neo4j: boolean }> {
   try {
     const res = await fetch(`${BACKEND_URL}/health`);
@@ -15,7 +68,6 @@ export async function checkBackendHealth(): Promise<{ status: string; neo4j: boo
   }
 }
 
-// 2. Connect repository
 export async function connectBackendRepository(repoUrl: string) {
   try {
     const response = await fetch(`${BACKEND_URL}/repositories/connect`, {
@@ -31,7 +83,9 @@ export async function connectBackendRepository(repoUrl: string) {
   }
 }
 
-// 3. Index Repository & Fetch Neo4j Graph Nodes + Relationships
+// ---------------------------------------------------------------------------
+// 2. Fetch Full Repository Graph (POST /repositories/index)
+// ---------------------------------------------------------------------------
 export async function fetchBackendGraphData(repoUrl: string) {
   try {
     const response = await fetch(`${BACKEND_URL}/repositories/index`, {
@@ -44,39 +98,8 @@ export async function fetchBackendGraphData(repoUrl: string) {
 
     const data = await response.json();
 
-    // Map Backend Neo4j format to React Flow format
     if (data && data.nodes && Array.isArray(data.nodes)) {
-      const formattedNodes = data.nodes.map((node: any, index: number) => {
-        const col = index % 3;
-        const row = Math.floor(index / 3);
-        return {
-          id: node.id || `node-${index}`,
-          type: 'customNode',
-          data: {
-            label: node.properties?.name || node.id || 'Class/Package',
-            category: (node.label || 'class').toLowerCase(),
-            subtext: node.properties?.package || node.label || 'Entity',
-            modifiers: node.properties?.modifiers || [],
-            annotations: node.properties?.annotations || [],
-          },
-          position: { x: 120 + col * 260, y: 120 + row * 150 },
-        };
-      });
-
-      const formattedEdges = (data.relationships || []).map((rel: any, index: number) => ({
-        id: `rel-${index}`,
-        source: rel.source,
-        target: rel.target,
-        type: 'default',
-        label: rel.type || 'CONTAINS',
-        style: { stroke: '#243B6B', strokeWidth: 2 },
-      }));
-
-      return {
-        nodes: formattedNodes,
-        edges: formattedEdges,
-        repoName: data.repository || 'Connected Repo',
-      };
+      return parseGraphDocument(data);
     }
 
     return null;
@@ -86,26 +109,132 @@ export async function fetchBackendGraphData(repoUrl: string) {
   }
 }
 
-// 4. Inspect Class Details
-export async function fetchClassDetails(className: string) {
+// Helper to convert OpenAPI GraphDocument -> React Flow Nodes & Edges
+function parseGraphDocument(data: any) {
+  const COLUMNS = 4;
+  const X_SPACING = 280;
+  const Y_SPACING = 160;
+
+  const formattedNodes = data.nodes.map((node: any, index: number) => {
+    const col = index % COLUMNS;
+    const row = Math.floor(index / COLUMNS);
+    const props = node.properties || {};
+    const labelName = props.name || props.id || node.id;
+
+    return {
+      id: String(node.id),
+      type: 'customNode',
+      data: {
+        label: labelName,
+        category: String(node.label || props.type || 'class').toLowerCase(),
+        subtext: props.package || node.label || 'Entity',
+        modifiers: props.modifiers || [],
+        annotations: props.annotations || [],
+        rawProperties: props,
+      },
+      position: { x: 100 + col * X_SPACING, y: 100 + row * Y_SPACING },
+    };
+  });
+
+  const formattedEdges = (data.relationships || []).map((rel: any, index: number) => ({
+    id: `rel-${index}`,
+    source: String(rel.source),
+    target: String(rel.target),
+    type: 'default',
+    label: rel.type || 'CONTAINS',
+    style: { stroke: '#243B6B', strokeWidth: 2 },
+  }));
+
+  return {
+    nodes: formattedNodes,
+    edges: formattedEdges,
+    repoName: data.repository || 'Connected Repo',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 3. Class & Method Lookups
+// ---------------------------------------------------------------------------
+export async function fetchClassByName(className: string): Promise<ClassResponse | null> {
   try {
     const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(className)}`);
     if (!res.ok) return null;
     return await res.json();
-  } catch (error) {
-    console.error('Error fetching class details:', error);
+  } catch {
     return null;
   }
 }
 
-// 5. Inspect Methods inside a Class
-export async function fetchClassMethods(controllerOrClassName: string) {
+export async function fetchMethodsByName(methodName: string): Promise<MethodResponse[] | null> {
   try {
-    const res = await fetch(`${BACKEND_URL}/graph/methods/${encodeURIComponent(controllerOrClassName)}`);
+    const res = await fetch(`${BACKEND_URL}/graph/methods/${encodeURIComponent(methodName)}`);
     if (!res.ok) return null;
     return await res.json();
-  } catch (error) {
-    console.error('Error fetching method details:', error);
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Class Deep Insights (Endpoints using class_id)
+// ---------------------------------------------------------------------------
+export async function fetchClassMethods(classId: string): Promise<MethodResponse[] | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/methods`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchClassFields(classId: string): Promise<FieldResponse[] | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/fields`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchClassHistory(classId: string): Promise<ClassHistoryResponse | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/history`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchClassDependencies(classId: string): Promise<DependencyGroupResponse | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/dependencies`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchClassDependents(classId: string): Promise<DependencyGroupResponse | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/dependents`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchClassSubgraph(classId: string) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/graph/classes/${encodeURIComponent(classId)}/subgraph`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return parseGraphDocument(data);
+  } catch {
     return null;
   }
 }
