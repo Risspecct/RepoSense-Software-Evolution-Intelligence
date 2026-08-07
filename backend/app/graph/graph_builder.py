@@ -144,17 +144,25 @@ class GraphBuilder:
 
         class_id = f"{package_name}.{class_info.name}"
 
+        properties = {
+            "name": class_info.name,
+            "type": class_info.type.value,
+            "modifiers": class_info.modifiers,
+            "annotations": class_info.annotations,
+            "extends": class_info.extends,
+            "implements": class_info.implements,
+        }
+
+        if class_info.summary is not None:
+            properties["summary"] = class_info.summary
+
+        if class_info.embedding is not None:
+            properties["embedding"] = class_info.embedding
+
         return GraphNode(
             id=class_id,
             label=NodeLabel.CLASS,
-            properties={
-                "name": class_info.name,
-                "type": class_info.type.value,
-                "modifiers": class_info.modifiers,
-                "annotations": class_info.annotations,
-                "extends": class_info.extends,
-                "implements": class_info.implements,
-            },
+            properties=properties,
         )
 
     def _build_field(
@@ -216,6 +224,12 @@ class GraphBuilder:
 
         if method.return_type is not None:
             properties["return_type"] = method.return_type
+
+        if method.summary is not None:
+            properties["summary"] = method.summary
+
+        if method.embedding is not None:
+            properties["embedding"] = method.embedding
 
         return GraphNode(
             id=method_id,

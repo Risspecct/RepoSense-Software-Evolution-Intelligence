@@ -39,5 +39,5 @@ class ClassInfo(BaseModel):
     methods: list[MethodInfo] = Field(default_factory=list)
 
     summary: str | None = None
-    
+
     embedding: list[float] | None = None
