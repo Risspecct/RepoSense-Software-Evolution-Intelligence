@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from app.analysis.analyzer_factory import AnalyzerFactory
@@ -14,6 +15,8 @@ from app.intelligence.gemini_client import GeminiClient
 from app.intelligence.summary_service import SummaryService
 from app.models.source_file import ProgrammingLanguage, SourceFile
 from app.parsers.parser_factory import ParserFactory
+
+logger = logging.getLogger(__name__)
 
 
 class RepositoryIndexer:
@@ -96,16 +99,30 @@ class RepositoryIndexer:
             self.writer.write(graph)
 
             # Generate summaries for the current codebase.
-            self.summary_service.summarize_repository()
+            try:
+                self.summary_service.summarize_repository()
+            except Exception as exc:
+                logger.exception(
+                    "Failed to generate repository summaries for %s: %s",
+                    repository_path,
+                    exc,
+                )
 
             # Generate intents for historical commits.
             #
             # Historical commits must not trigger significance-based
             # summary updates because the graph represents the current
             # repository state.
-            self.commit_analysis_service.generate_historical_intents(
-                commits,
-            )
+            try:
+                self.commit_analysis_service.generate_historical_intents(
+                    commits,
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Failed to generate historical commit intents for %s: %s",
+                    repository_path,
+                    exc,
+                )
 
         finally:
             self.client.close()
