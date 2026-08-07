@@ -6,6 +6,7 @@ import { Analytics } from './pages/Analytics';
 import { RepoChatDrawer } from './components/chat/RepoChatDrawer';
 import { fetchGitHubRepoData } from './components/services/githubApi';
 import { initialNodes, initialEdges } from './mockData/graphData';
+import { RepositoryExplorer } from './components/explorer/RepositoryExplorer';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('graph');
@@ -38,11 +39,13 @@ export function App() {
       />
 
       {/* Main Canvas View */}
-      <main className="flex-1">
+      // Inside src/App.tsx wrapper:
+     <main className="w-full min-h-[calc(100vh-80px)] bg-[#F6F5F1]">
         {activeTab === 'graph' && <KnowledgeGraph nodes={nodes} edges={edges} setNodes={setNodes} setEdges={setEdges} />}
+        {activeTab === 'explorer' && <RepositoryExplorer />}
         {activeTab === 'prs' && <PullRequests />}
         {activeTab === 'analytics' && <Analytics />}
-      </main>
+     </main>
 
       {/* Floating GraphRAG AI Chat Assistant */}
       <RepoChatDrawer />

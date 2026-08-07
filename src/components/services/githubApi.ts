@@ -1,17 +1,13 @@
 export async function fetchGitHubRepoData(repoUrl: string) {
+  const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (!match) return null;
+  const [, owner, repo] = match;
+
   try {
-    const match = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
-    if (!match) throw new Error('Invalid GitHub URL');
-
-    const [, owner, repo] = match;
-
-    // Fetch up to 20 historical commits for a rich, balanced graph
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=20`);
-    if (!response.ok) throw new Error('Repo not found');
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=16`);
+    if (!response.ok) return null;
 
     const commits = await response.json();
-
-    // Balanced Layout Constants
     const COLUMNS = 4;
     const X_SPACING = 240;
     const Y_SPACING = 120;
@@ -22,18 +18,19 @@ export async function fetchGitHubRepoData(repoUrl: string) {
       {
         id: 'repo-root',
         type: 'customNode',
-        data: { label: `${owner}/${repo}`, category: 'repo', subtext: 'Active Repository Memory' },
+        data: { label: `${owner}/${repo}`, category: 'repo', subtext: 'Client Ingested Repository' },
         position: { x: START_X + ((COLUMNS - 1) * X_SPACING) / 2, y: 30 },
       },
       ...commits.map((c: any, index: number) => {
         const col = index % COLUMNS;
         const row = Math.floor(index / COLUMNS);
+        const shortSha = c.sha.slice(0, 7);
 
         return {
-          id: `commit-${c.sha.slice(0, 7)}`,
+          id: `commit-${shortSha}`,
           type: 'customNode',
           data: {
-            label: `PR #${100 + index}`,
+            label: `commit:${shortSha}`,
             category: 'commit',
             subtext: c.commit.message.slice(0, 22) + '...',
             author: c.commit.author.name,
@@ -67,9 +64,12 @@ export async function fetchGitHubRepoData(repoUrl: string) {
       id: `e-commit-${index}`,
       source: 'repo-root',
       target: `commit-${c.sha.slice(0, 7)}`,
-      animated: index === 0,
-      type: 'smoothstep',
-      style: { stroke: index === 0 ? '#B5442C' : '#243B6B', strokeWidth: 1.5 },
+      type: 'default',
+      style: {
+        stroke: index === 0 ? '#B5442C' : '#243B6B',
+        strokeWidth: 2,
+        strokeDasharray: index === 0 ? '4 4' : 'none',
+      },
     }));
 
     if (commits.length > 0) {
@@ -78,23 +78,30 @@ export async function fetchGitHubRepoData(repoUrl: string) {
           id: 'e-dev-connect',
           source: 'dev-main',
           target: `commit-${commits[0].sha.slice(0, 7)}`,
-          type: 'smoothstep',
-          style: { stroke: '#2E7D5B', strokeWidth: 1.5 },
+          type: 'default',
+          label: 'AUTHORED',
+          labelStyle: { fill: '#2E7D5B', fontWeight: 700, fontSize: 10, fontFamily: 'JetBrains Mono' },
+          labelBgStyle: { fill: '#FFFFFF', rx: 6, ry: 6 },
+          labelBgPadding: [6, 4],
+          style: { stroke: '#2E7D5B', strokeWidth: 2 },
         },
         {
           id: 'e-file-connect',
           source: `commit-${commits[0].sha.slice(0, 7)}`,
           target: 'file-core',
           label: 'MODIFIED',
-          type: 'smoothstep',
-          style: { stroke: '#B5442C', strokeWidth: 1.5 },
+          labelStyle: { fill: '#B5442C', fontWeight: 700, fontSize: 10, fontFamily: 'JetBrains Mono' },
+          labelBgStyle: { fill: '#FFFFFF', rx: 6, ry: 6 },
+          labelBgPadding: [6, 4],
+          type: 'default',
+          style: { stroke: '#B5442C', strokeWidth: 2 },
         }
       );
     }
 
     return { nodes: newNodes, edges: newEdges, repoName: `${owner}/${repo}` };
   } catch (error) {
-    console.error('GitHub API error:', error);
+    console.error('Failed to fetch from GitHub:', error);
     return null;
   }
 }

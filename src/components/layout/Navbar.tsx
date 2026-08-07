@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Cpu, Network, FileCode, BarChart3, Search, GitBranch, Loader2 } from 'lucide-react';
+import { Cpu, Network, FileCode, BarChart3, Search, GitBranch, Loader2, FolderGit2 } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -13,6 +13,7 @@ export const Navbar = ({ activeTab, setActiveTab, onIngestRepo, isLoadingRepo }:
 
   const navItems = [
     { id: 'graph', label: 'Knowledge Graph', icon: Network },
+    { id: 'explorer', label: 'Repository Explorer', icon: FolderGit2 },
     { id: 'prs', label: 'PR Insights', icon: FileCode },
     { id: 'analytics', label: 'Analytics & Hotspots', icon: BarChart3 },
   ];

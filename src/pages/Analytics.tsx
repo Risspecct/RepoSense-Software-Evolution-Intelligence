@@ -1,28 +1,56 @@
 import { mockAnalytics } from '../mockData/graphData';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, PieChart, Pie } from 'recharts';
-import { AlertTriangle, Users } from 'lucide-react';
+import { Users, Flame, ShieldAlert, Cpu } from 'lucide-react';
 
 export const Analytics = () => {
   return (
     <div className="bg-[#F6F5F1] min-h-[calc(100vh-80px)] p-6 md:p-8 space-y-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-[#171A21]">Repository Hotspots & Bus-Factor Analytics</h2>
-          <p className="text-xs text-[#5B5F6B] mt-1 font-mono-code">
-            Code churn metrics and developer ownership breakdown across architectural modules
-          </p>
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Top KPI Metric Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono-code">
+          <div className="bg-white p-5 rounded-xl border border-[#E4E1D8] shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Fragile Files (Hotspots)</span>
+              <p className="text-2xl font-bold text-[#B5442C]">2 Files</p>
+            </div>
+            <div className="p-3 bg-[#B5442C]/10 rounded-xl text-[#B5442C]">
+              <Flame className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-[#E4E1D8] shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Bus Factor Risk</span>
+              <p className="text-2xl font-bold text-[#B8862F]">Medium (1 Dev)</p>
+            </div>
+            <div className="p-3 bg-[#B8862F]/10 rounded-xl text-[#B8862F]">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-[#E4E1D8] shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Analyzed Commits</span>
+              <p className="text-2xl font-bold text-[#243B6B]">240 Commits</p>
+            </div>
+            <div className="p-3 bg-[#243B6B]/10 rounded-xl text-[#243B6B]">
+              <Cpu className="w-6 h-6" />
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Hotspots Chart with Cutoff Line */}
-          <div className="bg-white border border-[#E4E1D8] rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Fragile Code Hotspots Chart */}
+          <div className="bg-white border border-[#E4E1D8] rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <h3 className="text-sm font-bold text-[#171A21] flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-[#B8862F]" />
+                <h3 className="text-base font-bold text-[#171A21] flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-[#B5442C]" />
                   <span>Fragile Code Hotspots (High Churn)</span>
                 </h3>
-                <p className="text-[11px] text-[#5B5F6B] font-mono-code mt-0.5">Threshold: &gt;30 modifications</p>
+                <p className="text-xs text-[#5B5F6B] font-mono-code mt-0.5">Threshold cutoff: &gt;30 modifications</p>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono-code">
                 <span className="w-3 h-3 bg-[#B5442C] rounded-sm inline-block"></span>
@@ -32,18 +60,22 @@ export const Analytics = () => {
               </div>
             </div>
 
-            <div className="h-64 pt-4">
+            <div className="h-72 pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={mockAnalytics.hotspots}>
-                  <XAxis dataKey="name" stroke="#5B5F6B" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#5B5F6B" fontSize={10} tickLine={false} />
+                  <XAxis dataKey="name" stroke="#5B5F6B" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#5B5F6B" fontSize={11} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#171A21', border: 'none', borderRadius: '6px', color: '#FFF' }}
+                    contentStyle={{ backgroundColor: '#171A21', border: 'none', borderRadius: '8px', color: '#FFF' }}
                     itemStyle={{ color: '#FFF', fontFamily: 'JetBrains Mono', fontSize: '11px' }}
                   />
-                  {/* Dashed Threshold Cutoff Line */}
-                  <ReferenceLine y={30} stroke="#B5442C" strokeDasharray="4 4" label={{ value: 'HOTSPOT THRESHOLD', fill: '#B5442C', fontSize: 9, fontFamily: 'JetBrains Mono' }} />
-                  <Bar dataKey="changes" radius={[4, 4, 0, 0]}>
+                  <ReferenceLine
+                    y={30}
+                    stroke="#B5442C"
+                    strokeDasharray="4 4"
+                    label={{ value: 'HOTSPOT THRESHOLD', fill: '#B5442C', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                  />
+                  <Bar dataKey="changes" radius={[6, 6, 0, 0]}>
                     {mockAnalytics.hotspots.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.changes >= 30 ? '#B5442C' : '#243B6B'} />
                     ))}
@@ -53,26 +85,26 @@ export const Analytics = () => {
             </div>
           </div>
 
-          {/* Developer Ownership Donut Heatmap */}
-          <div className="bg-white border border-[#E4E1D8] rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-[#171A21] flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#2E7D5B]" />
+          {/* Developer Ownership Map */}
+          <div className="bg-white border border-[#E4E1D8] rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 className="text-base font-bold text-[#171A21] flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#2E7D5B]" />
               <span>Developer Ownership Map</span>
             </h3>
 
             <div className="space-y-4">
               {mockAnalytics.developerExpertise.map((dev, idx) => (
-                <div key={idx} className="p-4 bg-[#F8F7F4] border border-[#E4E1D8] rounded-lg flex items-center justify-between gap-4">
+                <div key={idx} className="p-4 bg-[#F8F7F4] border border-[#E4E1D8] rounded-xl flex items-center justify-between gap-4">
                   <div className="flex-1 space-y-1">
                     <h4 className="text-sm font-bold text-[#171A21]">{dev.name}</h4>
                     <p className="text-xs text-[#5B5F6B] font-mono-code">{dev.role}</p>
-                    <div className="inline-block mt-1 px-2 py-0.5 bg-white border border-[#E4E1D8] rounded text-[10px] font-mono-code text-[#171A21]">
-                      Primary: {dev.primaryModule}
+                    <div className="inline-block mt-2 px-2.5 py-1 bg-white border border-[#E4E1D8] rounded-lg text-[10px] font-mono-code text-[#171A21] font-bold">
+                      Primary Domain: {dev.primaryModule}
                     </div>
                   </div>
 
                   {/* Donut Chart Visualizing Ownership */}
-                  <div className="w-20 h-20 relative shrink-0">
+                  <div className="w-24 h-24 relative shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -80,8 +112,8 @@ export const Analytics = () => {
                           dataKey="value"
                           cx="50%"
                           cy="50%"
-                          innerRadius={18}
-                          outerRadius={30}
+                          innerRadius={22}
+                          outerRadius={36}
                           stroke="none"
                         >
                           {dev.ownershipData.map((entry, i) => (
@@ -90,7 +122,7 @@ export const Analytics = () => {
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center font-mono-code text-[10px] font-bold text-[#171A21]">
+                    <div className="absolute inset-0 flex items-center justify-center font-mono-code text-[11px] font-bold text-[#171A21]">
                       {dev.commits}c
                     </div>
                   </div>
@@ -98,6 +130,7 @@ export const Analytics = () => {
               ))}
             </div>
           </div>
+
         </div>
       </div>
     </div>
