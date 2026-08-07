@@ -6,7 +6,9 @@ from app.config import settings
 from app.graph.neo4j_client import neo4j_client
 from app.api.graph_router import router as graph_router
 from app.api.routes.repositories import router as repository_router
-
+from app.risk.route_change_coupling import (
+    router as change_coupling_router,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,7 @@ app = FastAPI(
 
 app.include_router(repository_router)
 app.include_router(graph_router)
-
+app.include_router(change_coupling_router)
 
 @app.get("/")
 async def root():
