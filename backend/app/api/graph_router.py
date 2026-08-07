@@ -9,8 +9,10 @@ from app.api.graph_models import (
     FieldResponse,
     MethodResponse,
 )
+from app.graph.models.graph_document import GraphDocument
 from app.graph.neo4j_client import neo4j_client
 from app.graph.query.graph_query_service import GraphQueryService
+from app.graph.query.subgraph_service import SubgraphService
 
 
 logger = logging.getLogger(__name__)
@@ -23,10 +25,17 @@ router = APIRouter(
 graph_query_service = GraphQueryService(
     neo4j_client,
 )
+subgraph_service = SubgraphService(
+    neo4j_client,
+)
 
 
 def get_graph_query_service() -> GraphQueryService:
     return graph_query_service
+
+
+def get_subgraph_service() -> SubgraphService:
+    return subgraph_service
 
 
 def _raise_query_error(
@@ -223,3 +232,31 @@ def get_dependents(
     return DependencyGroupResponse.model_validate(
         dependents,
     )
+
+
+@router.get(
+    "/classes/{class_id}/subgraph",
+    response_model=GraphDocument,
+    summary="Get class subgraph",
+    description="Return a one-hop neighborhood around the given class.",
+)
+def get_class_subgraph(
+    class_id: str,
+    service: GraphQueryService = Depends(
+        get_graph_query_service,
+    ),
+    subgraph_service: SubgraphService = Depends(
+        get_subgraph_service,
+    ),
+) -> GraphDocument:
+    _require_class(
+        class_id,
+        service,
+    )
+
+    try:
+        return subgraph_service.get_class_subgraph(
+            class_id,
+        )
+    except (Neo4jError, RuntimeError) as error:
+        _raise_query_error(error)

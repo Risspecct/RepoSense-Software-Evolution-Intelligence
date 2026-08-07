@@ -101,3 +101,40 @@ WITH type(r) AS relationship_type, dependent
 ORDER BY dependent.name, dependent.id
 RETURN relationship_type, collect({DEPENDENT_CLASS_PROJECTION}) AS nodes
 """
+
+GET_CLASS_SUBGRAPH = """
+MATCH (class:Class {id: $class_id})
+
+OPTIONAL MATCH (class)-[outgoing:DECLARES|HAS_FIELD|IMPORTS|EXTENDS|IMPLEMENTS]->(outgoing_node)
+
+OPTIONAL MATCH (incoming_node:Class)-[incoming:IMPORTS|EXTENDS|IMPLEMENTS]->(class)
+
+WITH
+    collect(DISTINCT class) +
+    collect(DISTINCT outgoing_node) +
+    collect(DISTINCT incoming_node) AS nodes,
+
+    collect(DISTINCT outgoing) +
+    collect(DISTINCT incoming) AS relationships
+
+RETURN
+[
+    node IN nodes
+    WHERE node IS NOT NULL |
+    {
+        id: node.id,
+        label: head(labels(node)),
+        properties: properties(node)
+    }
+] AS nodes,
+
+[
+    relationship IN relationships
+    WHERE relationship IS NOT NULL |
+    {
+        source: startNode(relationship).id,
+        target: endNode(relationship).id,
+        type: type(relationship)
+    }
+] AS relationships
+"""
