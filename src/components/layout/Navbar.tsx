@@ -1,15 +1,64 @@
-import { useState } from 'react';
-import { Cpu, Network, FileCode, BarChart3, Search, GitBranch, Loader2, FolderGit2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+  Network, FolderGit2, FileCode, BarChart3, 
+  GitBranch, Database, CheckCircle2, AlertCircle, RefreshCw 
+} from 'lucide-react';
+import { checkBackendHealth, connectBackendRepository } from '../services/backendApi';
+import { fetchGitHubRepoData } from '../services/githubApi';
 
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onIngestRepo: (url: string) => Promise<void>;
-  isLoadingRepo: boolean;
+  setNodes?: (nodes: any) => void;
+  setEdges?: (edges: any) => void;
+  setRepoName?: (name: string) => void;
+  onIngestRepo?: (url: string) => Promise<void>;
 }
 
-export const Navbar = ({ activeTab, setActiveTab, onIngestRepo, isLoadingRepo }: NavbarProps) => {
-  const [repoUrl, setRepoUrl] = useState('');
+export const Navbar = ({ 
+  activeTab, 
+  setActiveTab, 
+  setNodes, 
+  setEdges, 
+  setRepoName, 
+  onIngestRepo 
+}: NavbarProps) => {
+  // Inside src/components/layout/Navbar.tsx:
+  const [inputUrl, setInputUrl] = useState('https://github.com/facebook/react');
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [neo4jOnline, setNeo4jOnline] = useState(false);
+
+  // Check Neo4j Health on initial mount
+  useEffect(() => {
+    checkBackendHealth().then((res) => {
+      setNeo4jOnline(res.neo4j);
+    });
+  }, []);
+
+  const handleIngest = async () => {
+    if (!inputUrl) return;
+    setIsIngesting(true);
+
+    try {
+      // 1. Trigger App.tsx onIngestRepo if provided
+      if (onIngestRepo) {
+        await onIngestRepo(inputUrl);
+      } else {
+        // Fallback connecting logic
+        await connectBackendRepository(inputUrl);
+        const res = await fetchGitHubRepoData(inputUrl);
+        if (res && setNodes && setEdges && setRepoName) {
+          setNodes(res.nodes);
+          setEdges(res.edges);
+          setRepoName(res.repoName);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsIngesting(false);
+    }
+  };
 
   const navItems = [
     { id: 'graph', label: 'Knowledge Graph', icon: Network },
@@ -18,53 +67,54 @@ export const Navbar = ({ activeTab, setActiveTab, onIngestRepo, isLoadingRepo }:
     { id: 'analytics', label: 'Analytics & Hotspots', icon: BarChart3 },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (repoUrl.trim()) {
-      onIngestRepo(repoUrl);
-    }
-  };
-
   return (
-    <header className="bg-[#12141A] border-b border-[#262A34] px-6 py-3.5 flex flex-col lg:flex-row justify-between items-center gap-4 sticky top-0 z-50">
-      {/* Brand Section */}
+    <header className="h-20 bg-[#171A21] border-b border-[#2A2D3D] px-6 flex items-center justify-between text-white font-mono-code z-50">
+      {/* Brand */}
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-[#6366F1] rounded-lg shadow-md shadow-indigo-500/20">
-          <Cpu className="w-5 h-5 text-white" />
+        <div className="p-2 bg-[#243B6B] rounded-xl text-[#38BDF8] shadow-md">
+          <Database className="w-5 h-5" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold tracking-tight text-[#E8E9ED]">RepoSense</h1>
-            <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-[#262A34] text-[#94A3B8]">
-              v1.0-live
+            <h1 className="font-bold text-base tracking-wide text-white">RepoMind</h1>
+            <span className="text-[10px] px-2 py-0.5 bg-[#243B6B] text-[#38BDF8] rounded-full font-bold">
+              v1.0
+            </span>
+            {/* Health Status Badge */}
+            <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+              neo4jOnline 
+                ? 'bg-[#2E7D5B]/20 text-[#2E7D5B] border border-[#2E7D5B]/40' 
+                : 'bg-[#B5442C]/20 text-[#B5442C] border border-[#B5442C]/40'
+            }`}>
+              {neo4jOnline ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+              {neo4jOnline ? 'NEO4J CONNECTED' : 'NEO4J OFFLINE'}
             </span>
           </div>
-          <p className="text-[11px] text-[#8E95A5] font-mono-code">Software Evolution Intelligence</p>
+          <p className="text-[10px] text-[#94A3B8]">Software Evolution Intelligence</p>
         </div>
       </div>
 
-      {/* GitHub Repo Ingestion Form */}
-      <form onSubmit={handleSubmit} className="flex items-center gap-2 bg-[#1A1D26] border border-[#262A34] px-3 py-1.5 rounded-lg w-full max-w-md">
-        <GitBranch className="w-4 h-4 text-[#8E95A5] shrink-0" />
+      {/* Ingest Input Bar */}
+      <div className="flex items-center gap-2 bg-[#1A1C28] border border-[#2A2D3D] p-1.5 rounded-2xl w-full max-w-md shadow-inner">
+        <GitBranch className="w-4 h-4 text-[#94A3B8] ml-2 shrink-0" />
         <input
           type="text"
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          placeholder="Paste GitHub Repo URL (e.g. https://github.com/facebook/react)"
-          className="bg-transparent text-xs text-[#E8E9ED] placeholder-[#5B5F6B] focus:outline-none flex-1 font-mono-code"
+          value={inputUrl}
+          onChange={(e) => setInputUrl(e.target.value)}
+          placeholder="Paste GitHub Repo URL..."
+          className="bg-transparent text-xs text-white focus:outline-none w-full font-mono-code placeholder-[#5B5F6B]"
         />
         <button
-          type="submit"
-          disabled={isLoadingRepo}
-          className="px-3 py-1 bg-[#6366F1] hover:bg-indigo-500 text-white font-bold text-xs rounded transition flex items-center gap-1 cursor-pointer"
+          onClick={handleIngest}
+          disabled={isIngesting}
+          className="px-4 py-1.5 bg-[#243B6B] hover:bg-[#1E293B] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50 shrink-0"
         >
-          {isLoadingRepo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-          <span>{isLoadingRepo ? 'Ingesting...' : 'Ingest'}</span>
+          {isIngesting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Ingest'}
         </button>
-      </form>
+      </div>
 
-      {/* Navigation Pills */}
-      <nav className="flex items-center bg-[#1A1D26] p-1 rounded-lg border border-[#262A34]">
+      {/* Navigation Tabs */}
+      <nav className="flex items-center gap-1 bg-[#1A1C28] p-1 rounded-2xl border border-[#2A2D3D]">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -72,13 +122,11 @@ export const Navbar = ({ activeTab, setActiveTab, onIngestRepo, isLoadingRepo }:
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-[#243B6B] text-white shadow-sm'
-                  : 'text-[#8E95A5] hover:text-[#E8E9ED] hover:bg-[#222632]'
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                isActive ? 'bg-[#243B6B] text-white shadow-sm' : 'text-[#94A3B8] hover:text-white'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-4 h-4" />
               <span>{item.label}</span>
             </button>
           );
