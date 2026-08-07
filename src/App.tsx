@@ -5,6 +5,7 @@ import { ClassSelector } from './components/graph/ClassSelector';
 import { RepositoryExplorer } from './components/explorer/RepositoryExplorer';
 import { PullRequests } from './pages/PullRequests';
 import { Analytics } from './pages/Analytics';
+import { RepoChatDrawer } from './components/chat/RepoChatDrawer';
 import { 
   indexBackendRepository,
   fetchClassSubgraph 
@@ -158,6 +159,7 @@ export function App() {
         {activeTab === 'prs' && <PullRequests />}
         {activeTab === 'analytics' && <Analytics />}
       </main>
+      <RepoChatDrawer />
     </div>
   );
 }
