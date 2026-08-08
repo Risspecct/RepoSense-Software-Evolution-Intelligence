@@ -14,7 +14,7 @@ export const RepoChatDrawer = () => {
   const presetQuestions = [
     'Why was Redis introduced?',
     'Which modules depend on jwt_verifier.py?',
-    'Who is the primary owner of Auth?',
+    'Who owns the Auth module?',
     'What changed in PR #104?',
   ];
 
