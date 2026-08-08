@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.risk.change_coupling import calculate_change_coupling
+from app.risk.change_coupling import analyze_change_coupling
 
 router = APIRouter(
     prefix="/change-coupling",
@@ -15,7 +15,7 @@ def get_change_coupling():
     """
 
     try:
-        result = calculate_change_coupling()
+        result = analyze_change_coupling(project_id="repomind-backend")
 
         return {
             "status": "success",

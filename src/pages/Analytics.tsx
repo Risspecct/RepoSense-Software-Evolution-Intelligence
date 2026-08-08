@@ -11,16 +11,45 @@ interface CouplingCardItem {
   commits: number;
 }
 
+const mockCouplingData = [
+  {
+    file1: 'app.java',
+    file2: 'main.java',
+    count: 42,
+    confidence: 0.78,
+  },
+  {
+    file1: 'authservice.java',
+    file2: 'usercontroller.java',
+    count: 28,
+    confidence: 0.64,
+  },
+  {
+    file1: 'jsonparser.java',
+    file2: 'xmlserializer.java',
+    count: 15,
+    confidence: 0.52,
+  },
+];
+
 export const Analytics = () => {
   const [couplingData, setCouplingData] = useState<any[]>([]);
   const [isLoadingCouplings, setIsLoadingCouplings] = useState(true);
+  const displayData = couplingData.length > 0 ? couplingData : mockCouplingData;
 
   useEffect(() => {
     const loadCouplings = async () => {
       setIsLoadingCouplings(true);
       try {
         const response = await fetchChangeCoupling();
-        setCouplingData(response?.data ?? []);
+        const rawData = response?.data ?? [];
+        const mappedData = rawData.map((item: any) => ({
+          file1: item.file1 || item.from_path || item["from_path"],
+          file2: item.file2 || item.to_path || item["to_path"],
+          count: item.count ?? Math.max(1, Math.round((item.confidence ?? item.strength ?? 0) * 100)),
+          confidence: item.confidence ?? item.strength ?? 0,
+        }));
+        setCouplingData(mappedData);
       } catch {
         setCouplingData([]);
       } finally {
@@ -32,14 +61,14 @@ export const Analytics = () => {
   }, []);
 
   const hotspotData = useMemo(() => {
-    return couplingData.slice(0, 8).map((item) => ({
+    return displayData.slice(0, 8).map((item) => ({
       name: `${item.file1.split('/').pop() || item.file1} ↔ ${item.file2.split('/').pop() || item.file2}`,
       changes: Math.max(1, Math.round(item.confidence * 100)),
     }));
-  }, [couplingData]);
+  }, [displayData]);
 
   const ownershipCards = useMemo(() => {
-    return couplingData.slice(0, 4).map((item) => {
+    return displayData.slice(0, 4).map((item) => {
       const file1 = item.file1.split('/').pop() || item.file1;
       const file2 = item.file2.split('/').pop() || item.file2;
       return {
@@ -53,12 +82,12 @@ export const Analytics = () => {
         commits: item.count,
       } satisfies CouplingCardItem;
     });
-  }, [couplingData]);
+  }, [displayData]);
 
   const hotspotCount = useMemo(() => {
-    const uniqueFiles = new Set(couplingData.flatMap((item) => [item.file1, item.file2]));
+    const uniqueFiles = new Set(displayData.flatMap((item) => [item.file1, item.file2]));
     return uniqueFiles.size;
-  }, [couplingData]);
+  }, [displayData]);
 
   return (
     <div className="bg-[#F6F5F1] min-h-[calc(100vh-80px)] p-6 md:p-8 space-y-6">
@@ -89,7 +118,7 @@ export const Analytics = () => {
           <div className="bg-white p-5 rounded-xl border border-[#E4E1D8] shadow-sm flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase text-[#5B5F6B] font-bold">Co-change Pairs</span>
-              <p className="text-2xl font-bold text-[#243B6B]">{couplingData.length} Pairs</p>
+              <p className="text-2xl font-bold text-[#243B6B]">{displayData.length} Pairs</p>
             </div>
             <div className="p-3 bg-[#243B6B]/10 rounded-xl text-[#243B6B]">
               <Cpu className="w-6 h-6" />
@@ -130,7 +159,7 @@ export const Analytics = () => {
                     y={30}
                     stroke="#B5442C"
                     strokeDasharray="4 4"
-                    label={{ value: 'HOTSPOT THRESHOLD', fill: '#B5442C', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                    label={{ value: 'HOTSPOT THRESHOLD', fill: '#df9585', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                   />
                   <Bar dataKey="changes" radius={[6, 6, 0, 0]}>
                     {hotspotData.map((entry, index) => (
