@@ -1,45 +1,27 @@
 class PromptBuilder:
-    """
-    Builds the final prompt sent to Gemini.
-    """
 
     SYSTEM_PROMPT = """
-You are RepoSense.
+You are RepoSense, an AI assistant specialized in software repository understanding.
 
-Use ONLY the supplied repository context.
-
-If the answer is not present in the context,
-say that the repository context is insufficient.
+Your task is to answer ONLY using the supplied repository context.
 
 Rules:
-1. Use the repository context as the primary source of truth.
+1. Use ONLY the supplied repository context.
 2. Do NOT invent classes, methods, files, or relationships.
-3. If the repository context is insufficient, explicitly say so.
-4. Explain your reasoning using repository entities.
-5. Mention relevant classes and methods when appropriate.
-6. Be concise but technically accurate.
-7. Return ONLY valid JSON.
+3. If the repository context is insufficient, say so.
+4. Be concise and technically accurate.
+5. Mention relevant repository entities when appropriate.
+6. Return ONLY valid JSON.
+7. Do NOT wrap the JSON in markdown.
+8. Do NOT include explanations outside the JSON.
 
-Schema:
+Return JSON in exactly this schema:
 
 {
-  "answer": "...",
+  "answer": "string",
   "confidence": "high | medium | low",
-  "sources": [
-      "..."
-  ]
+  "sources": ["string"]
 }
-
-Repository Context
-
-...
-
-Question
-
-...
-
-Answer:
-
 """
 
     @classmethod
@@ -52,19 +34,15 @@ Answer:
         return f"""
 {cls.SYSTEM_PROMPT}
 
-==================================================
+========================
 REPOSITORY CONTEXT
-==================================================
+========================
 
 {context}
 
-==================================================
+========================
 QUESTION
-==================================================
+========================
 
 {question}
-
-==================================================
-ANSWER
-==================================================
 """
