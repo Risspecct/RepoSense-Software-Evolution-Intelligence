@@ -15,7 +15,135 @@ export const RepoChatDrawer = () => {
     'Why was Redis introduced?',
     'Which modules depend on jwt_verifier.py?',
     'Who is the primary owner of Auth?',
+    'What changed in PR #104?',
   ];
+
+
+  const mockQuestionAnswers = [
+    {
+      question: "Why was Redis introduced?",
+      answer:
+        "Redis was introduced to cache authentication sessions and frequently accessed user data. This reduced repeated database queries and improved response latency during peak traffic.",
+    },
+    {
+      question: "Which modules depend on jwt_verifier.py?",
+      answer:
+        "The Auth module, Session Service, API Gateway, and Token Refresh Service directly depend on jwt_verifier.py.",
+    },
+    {
+      question: "Who owns the Auth module?",
+      answer:
+        "Based on commit history and pull requests, Alex Rivera is the primary contributor and maintainer of the Auth module.",
+    },
+    {
+      question: "What changed in PR #104?",
+      answer:
+        "PR #104 refactored jwt_verifier.py to eliminate a race condition during concurrent authentication requests and added additional unit tests.",
+    },
+    {
+      question: "Explain the authentication flow.",
+      answer:
+        "Incoming requests reach the API Gateway, which invokes jwt_verifier.py. Valid tokens are forwarded to the Auth Service, where user roles and permissions are validated before the request reaches downstream services.",
+    },
+    {
+      question: "Which classes are related to authentication?",
+      answer:
+        "AuthService, JwtVerifier, TokenProvider, UserRepository, SessionManager, and AuthenticationController participate in the authentication workflow.",
+    },
+    {
+      question: "Which files changed the most?",
+      answer:
+        "jwt_verifier.py, auth_service.py, session_manager.py, and token_provider.py have the highest number of commits in the repository.",
+    },
+    {
+      question: "Which developer contributed the most?",
+      answer:
+        "Risspecct contributed the largest number of commits, followed by Shresth-Agarwal and disha2211.",
+    },
+    {
+      question: "Which files are most risky?",
+      answer:
+        "jwt_verifier.py and auth_service.py have the highest change frequency and dependency count, making them the highest-risk files.",
+    },
+    {
+      question: "What is the dependency chain of Auth?",
+      answer:
+        "AuthenticationController → AuthService → JwtVerifier → UserRepository → RedisCache.",
+    },
+    {
+      question: "What happens during login?",
+      answer:
+        "Credentials are validated, a JWT is generated, the session is cached in Redis, and the access token is returned to the client.",
+    },
+    {
+      question: "How is JWT validated?",
+      answer:
+        "JwtVerifier validates the token signature, expiration time, issuer, and user claims before allowing the request to continue.",
+    },
+    {
+      question: "Which module imports SessionManager?",
+      answer:
+        "AuthService, LoginController, RefreshTokenService, and SessionCleanupJob import SessionManager.",
+    },
+    {
+      question: "Show the impact of modifying JwtVerifier.",
+      answer:
+        "Changing JwtVerifier affects authentication, authorization, session validation, API Gateway routing, and token refresh workflows.",
+    },
+    {
+      question: "Summarize the repository.",
+      answer:
+        "This repository implements a JWT-based authentication platform using Redis for session caching. The architecture is modular, with dedicated services for authentication, session management, and token generation.",
+    },
+    {
+      question: "What does AuthService do?",
+      answer:
+        "AuthService authenticates users, validates credentials, generates JWT tokens, and coordinates session creation.",
+    },
+    {
+      question: "Which tests cover authentication?",
+      answer:
+        "AuthServiceTest, JwtVerifierTest, AuthenticationControllerTest, and SessionManagerTest cover the authentication subsystem.",
+    },
+    {
+      question: "Explain repository architecture.",
+      answer:
+        "The repository follows a layered architecture consisting of Controllers, Services, Repositories, Utility Classes, and Infrastructure components.",
+    },
+    {
+      question: "How is Redis used?",
+      answer:
+        "Redis stores active sessions, refresh tokens, authentication metadata, and frequently accessed user information to reduce database load.",
+    },
+    {
+      question: "How does RepoSense answer questions?",
+      answer:
+        "RepoSense performs semantic retrieval, expands repository relationships through the graph, builds repository context, and then generates grounded answers using an LLM.",
+    },
+  ];
+
+  const normalizeQuestion = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+
+  const getMockAnswer = (query: string) => {
+    const normalizedQuery = normalizeQuestion(query);
+
+    const directMatch = mockQuestionAnswers.find(({ question }) => normalizeQuestion(question) === normalizedQuery);
+    if (directMatch) {
+      return directMatch.answer;
+    }
+
+    const keywordMatch = mockQuestionAnswers.find(({ question }) => {
+      const normalizedQuestion = normalizeQuestion(question);
+      return normalizedQuery.includes(normalizedQuestion) || normalizedQuestion.includes(normalizedQuery);
+    });
+
+    if (keywordMatch) {
+      return keywordMatch.answer;
+    }
+
+    return 'I do not have a answer for that question yet. Try one of the suggested prompts to see the canned responses.';
+  };
 
   const handleSend = (textToSend?: string) => {
     const query = textToSend || input;
@@ -25,11 +153,12 @@ export const RepoChatDrawer = () => {
     if (!textToSend) setInput('');
 
     setTimeout(() => {
+      const mockAnswer = getMockAnswer(query);
       setMessages((prev) => [
         ...prev,
         {
           sender: 'ai',
-          text: `[GraphRAG Context Traversal]\nTraversed nodes: File(jwt_verifier.py) ➔ Commit(#89a2e) ➔ Dev(Alex R.)\n\nAnswer: ${query.includes('jwt') ? 'jwt_verifier.py was refactored in PR #104 to resolve a race condition during concurrent API logins.' : 'Based on knowledge graph relationships, Alex Rivera authored 78% of modifications in this service.'}`,
+          text: `[RepoSense Answer]\n\n${mockAnswer}`,
         },
       ]);
     }, 800);
